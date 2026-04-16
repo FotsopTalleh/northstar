@@ -12,7 +12,12 @@ def init_firebase():
     global _db, _init_error
     try:
         if not firebase_admin._apps:
-            cred = credentials.Certificate(Config.FIREBASE_CREDENTIALS_PATH)
+            if Config.FIREBASE_CREDENTIALS_JSON:
+                import json
+                cred_dict = json.loads(Config.FIREBASE_CREDENTIALS_JSON)
+                cred = credentials.Certificate(cred_dict)
+            else:
+                cred = credentials.Certificate(Config.FIREBASE_CREDENTIALS_PATH)
             firebase_admin.initialize_app(cred)
         _db = firestore.client()
         logger.info("[Firebase] Connected to Firestore successfully.")
