@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — XPForge</title>
+  <meta name="description" content="Your daily task dashboard. Plan, lock, execute, and earn XP." />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar navbar-expand-lg">
+    <div class="container-fluid px-3">
+      <a class="navbar-brand" href="/dashboard.html"><i data-lucide="zap" style="display:inline-block; vertical-align:middle; margin-right:4px; margin-top:-4px"></i> XPForge</a>
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        <a href="/leaderboard.html" class="nav-link"><i data-lucide="trophy" class="icon-sm"></i> Board</a>
+        <a href="/clan.html"        class="nav-link"><i data-lucide="swords" class="icon-sm"></i> Clan</a>
+        <a href="/profile.html"     class="nav-link"><i data-lucide="user" class="icon-sm"></i> Profile</a>
+
+        <button class="notif-bell" onclick="toggleTheme()" style="margin-left:8px" title="Toggle Theme">
+          <i class="theme-icon" data-lucide="moon" style="width:18px;height:18px"></i>
+        </button>
+
+        <!-- Notification Bell -->
+        <div style="position:relative">
+          <div class="notif-bell" id="notif-bell">
+            <i data-lucide="bell" style="width:20px;height:20px"></i>
+            <span class="notif-badge" id="notif-count" style="display:none">0</span>
+          </div>
+          <div class="notif-dropdown" id="notif-dropdown">
+            <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+              <span style="font-weight:700;font-size:.9rem">Notifications</span>
+              <button id="notif-mark-all" class="btn btn-ghost" style="padding:4px 10px;font-size:.75rem">Mark all read</button>
+            </div>
+            <div id="notif-list"></div>
+          </div>
+        </div>
+
+        <div id="nav-avatar"></div>
+        <span id="nav-username" style="font-weight:600;font-size:.9rem;color:var(--text-secondary)"></span>
+        <button class="btn btn-ghost" id="btn-logout" style="padding:6px 14px;font-size:.85rem">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="page-content">
+    <!-- Header -->
+    <div class="page-header">
+      <h1>Today's Plan</h1>
+      <p id="today-date" style="color:var(--text-muted)"></p>
+    </div>
+
+    <!-- Stats Strip -->
+    <div class="stats-strip">
+      <div class="stat-card">
+        <div class="stat-label">Tasks Done</div>
+        <div class="stat-value" id="stat-total">—</div>
+        <div class="stat-sub">of today's tasks</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Planned</div>
+        <div class="stat-value" id="stat-planned">—</div>
+        <div class="stat-sub">completed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Unplanned</div>
+        <div class="stat-value" id="stat-unplanned">—</div>
+        <div class="stat-sub">bonus tasks</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total XP</div>
+        <div class="stat-value" id="stat-xp" style="color:var(--accent-light)">—</div>
+        <div class="stat-sub">all time</div>
+      </div>
+    </div>
+
+    <div class="row g-4">
+      <!-- Planned Tasks Column -->
+      <div class="col-lg-7">
+        <div class="card">
+          <div class="card-header-custom">
+            <i data-lucide="clipboard-list" style="width:24px;height:24px;color:var(--text-secondary)"></i>
+            <div>
+              <div style="font-weight:700">Planned Tasks</div>
+              <div style="font-size:.8rem;color:var(--text-muted)">+7 XP each · max 10 · −4 XP if failed</div>
+            </div>
+          </div>
+          <div class="card-body-custom">
+
+            <!-- Plan locked banner -->
+            <div class="plan-locked-banner mb-3" id="plan-locked-banner" style="display:none">
+              <i data-lucide="lock" style="width:24px;height:24px;color:var(--gold)"></i>
+              <div>
+                <div style="font-weight:700">Plan Locked</div>
+                <div style="font-size:.82rem;opacity:.8">No more changes to planned tasks. Stay committed!</div>
+              </div>
+            </div>
+
+            <!-- Add planned task form -->
+            <div id="section-add-planned">
+              <form id="form-add-planned" class="d-flex gap-2 mb-3">
+                <input id="input-planned-title" type="text" class="form-control-custom" placeholder="Add a planned task…" style="flex:1" />
+                <button type="submit" class="btn btn-primary-custom" style="white-space:nowrap">+ Add</button>
+              </form>
+            </div>
+
+            <!-- Task list -->
+            <div id="list-planned"></div>
+
+            <!-- Lock Button -->
+            <button class="lock-btn" id="btn-lock-plan"><i data-lucide="lock" style="width:18px;height:18px"></i> Lock My Plan</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unplanned Tasks Column -->
+      <div class="col-lg-5">
+        <div class="card">
+          <div class="card-header-custom">
+            <i data-lucide="zap" style="width:24px;height:24px;color:var(--text-secondary)"></i>
+            <div>
+              <div style="font-weight:700">Unplanned Tasks</div>
+              <div style="font-size:.8rem;color:var(--text-muted)">+3 XP each · max 5 per day</div>
+            </div>
+          </div>
+          <div class="card-body-custom">
+            <form id="form-add-unplanned" class="d-flex gap-2 mb-3">
+              <input id="input-unplanned-title" type="text" class="form-control-custom" placeholder="Quick win…" style="flex:1" />
+              <button type="submit" class="btn btn-gold" style="white-space:nowrap">+ Add</button>
+            </form>
+            <div id="list-unplanned"></div>
+          </div>
+        </div>
+
+        <!-- XP Rules info box -->
+        <div class="card mt-3" style="border-color:rgba(108,99,255,0.2)">
+          <div class="card-body-custom" style="padding:18px 20px">
+            <div class="section-title" style="font-size:.8rem">XP Rules</div>
+            <div class="d-flex flex-column gap-2" style="font-size:.85rem">
+              <div class="d-flex justify-content-between">
+                <span style="color:var(--text-secondary);display:flex;align-items:center"><i data-lucide="check-circle-2" style="width:16px;height:16px;margin-right:6px;color:var(--success)"></i> Planned complete</span>
+                <span class="xp-chip positive">+7 XP</span>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span style="color:var(--text-secondary);display:flex;align-items:center"><i data-lucide="x-circle" style="width:16px;height:16px;margin-right:6px;color:var(--danger)"></i> Planned failed</span>
+                <span class="xp-chip negative">−4 XP</span>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span style="color:var(--text-secondary);display:flex;align-items:center"><i data-lucide="zap" style="width:16px;height:16px;margin-right:6px;color:var(--gold)"></i> Unplanned done</span>
+                <span class="xp-chip provisional">+3 XP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/notifications.js"></script>
+  <script src="/js/dashboard.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>
