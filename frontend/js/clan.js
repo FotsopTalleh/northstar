@@ -29,8 +29,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("form-create-clan")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector("button");
-    const name  = document.getElementById("clan-name-input").value.trim();
-    const desc  = document.getElementById("clan-desc-input").value.trim();
+    const name = document.getElementById("clan-name-input").value.trim();
+    const desc = document.getElementById("clan-desc-input").value.trim();
     if (!name) return;
     setButtonLoading(btn, true);
     try {
@@ -141,12 +141,13 @@ function renderClanView(clan) {
   document.getElementById("no-clan-view")?.classList.add("d-none");
   document.getElementById("clan-view")?.classList.remove("d-none");
 
-  setElClan("clan-title",    clan.name);
-  setElClan("clan-desc",     clan.description || "No description");
+  setElClan("clan-title", clan.name);
+  setElClan("clan-desc", clan.description || "No description");
   const leaderEl = document.getElementById("clan-leader");
   if (leaderEl) leaderEl.innerHTML = `<i data-lucide="crown" class="icon-sm" style="margin-right:4px"></i>${clan.leader_username}`;
   setElClan("clan-members-count", `${clan.member_count || 0}/10 members`);
-  setElClan("clan-status",   clan.status?.toUpperCase() || "");
+  setElClan("clan-status", clan.status?.toUpperCase() || "");
+  setElClan("clan-id-raw", clan.clan_id || "—");
 
   // Members list
   const membersEl = document.getElementById("clan-members-list");
@@ -159,7 +160,7 @@ function renderClanView(clan) {
         ${renderAvatar(m.username, m.avatar_color)}
         <div style="flex:1">
           <div class="lb-username">${esc(m.username)} ${m.is_leader ? '<i data-lucide="crown" style="width:16px;height:16px;color:var(--gold);margin-left:4px"></i>' : ""}</div>
-          <div style="display:flex;gap:4px;margin-top:2px">${(m.badges||[]).slice(0,3).map(b=>`<span title="${b.name}" style="display:inline-flex"><i data-lucide="${b.icon||'award'}" style="width:16px;height:16px;color:var(--gold)"></i></span>`).join("")}</div>
+          <div style="display:flex;gap:4px;margin-top:2px">${(m.badges || []).slice(0, 3).map(b => `<span title="${b.name}" style="display:inline-flex"><i data-lucide="${b.icon || 'award'}" style="width:16px;height:16px;color:var(--gold)"></i></span>`).join("")}</div>
         </div>
         <span class="lb-xp">${m.total_xp} XP</span>
         ${amILeader && !m.is_leader ? `<button onclick="kickMember('${m.user_id}')" class="btn btn-ghost" style="padding:4px 8px;font-size:0.75rem;margin-left:8px;border-color:var(--danger);color:var(--danger)"><i data-lucide="user-minus" style="width:14px;height:14px"></i></button>` : ""}
@@ -194,4 +195,12 @@ function setElClan(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = val;
 }
-function esc(str) { return String(str||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function esc(str) { return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+function copyClanId() {
+  const raw = document.getElementById("clan-id-raw");
+  if (!raw || raw.textContent === "loading..." || raw.textContent === "—") return;
+  navigator.clipboard.writeText(raw.textContent)
+    .then(() => showToast("Clan ID copied!", "success"))
+    .catch(() => showToast("Could not copy — try manually.", "error"));
+}
