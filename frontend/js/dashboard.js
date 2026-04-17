@@ -143,9 +143,13 @@ function renderTaskItem(task) {
     ? `<span class="xp-chip ${task.xp_awarded >= 0 ? 'positive' : 'negative'}">${fmtXP(task.xp_awarded)} XP</span>`
     : `<span class="xp-chip provisional" style="opacity:.6">${task.type === "planned" ? "+7" : "+3"} XP</span>`;
 
+  // Planned tasks: Done button only available AFTER plan is locked
+  // Unplanned tasks: always completable
+  const canComplete = task.type === "unplanned" || (task.type === "planned" && isLocked);
+
   const actions = isPending ? `
     <div class="d-flex gap-2">
-      <button class="btn btn-success-custom" style="padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:4px" onclick="completeTask('${task.task_id}')"><i data-lucide="check" style="width:14px;height:14px"></i> Done</button>
+      ${canComplete ? `<button class="btn btn-success-custom" style="padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:4px" onclick="completeTask('${task.task_id}')"><i data-lucide="check" style="width:14px;height:14px"></i> Done</button>` : `<span style="font-size:.75rem;color:var(--text-muted);display:flex;align-items:center;gap:4px"><i data-lucide="lock" style="width:13px;height:13px"></i> Lock plan to complete</span>`}
       ${task.type === "planned" && isLocked ? `<button class="btn btn-danger-custom" style="padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:4px" onclick="failTask('${task.task_id}')"><i data-lucide="x" style="width:14px;height:14px"></i> Fail</button>` : ""}
     </div>
   ` : "";
