@@ -862,8 +862,9 @@ a:hover { color: var(--accent); }
   .page-content { padding: 16px 12px; padding-bottom: 90px; }
   .tab-btn { font-size: 0.78rem; padding: 8px 8px; }
 
-  /* Hide the top nav links & extras — replaced by bottom tab bar */
-  .navbar .d-flex.align-items-center.gap-2.ms-auto { display: none !important; }
+  /* Hide only nav links & theme toggle from top bar — bell, avatar, and logout stay */
+  .navbar .nav-link { display: none !important; }
+  .navbar .theme-icon-btn { display: none !important; }
 
   /* Toast above bottom nav */
   .toast-container { bottom: 80px; right: 12px; left: 12px; }
