@@ -96,10 +96,15 @@ def challenge():
     }
     db.collection("clan_battles").document(battle_id).set(battle_doc)
 
-    # Notify target clan leader
-    notify_battle_challenge(target_data["leader_id"], my_clan["name"])
+    # Notify target clan leader (with battle_id so they can accept)
+    notify_battle_challenge(
+        target_data["leader_id"],
+        my_clan["name"],
+        battle_id,
+        duration,
+    )
 
-    return jsonify(battle_doc), 201
+    return jsonify({"message": "Battle challenge sent!", "battle_id": battle_id}), 201
 
 
 @battle_bp.route("/accept", methods=["POST"])
@@ -128,6 +133,58 @@ def accept():
 
     battle_ref.update({"status": "active", "accepted_by": g.user_id})
     return jsonify({"message": "Battle accepted", "battle_id": battle_id}), 200
+
+
+@battle_bp.route("/respond", methods=["POST"])
+@require_auth
+def respond():
+    """Accept or decline a battle challenge via notification."""
+    data = request.get_json(silent=True) or {}
+    notif_id = data.get("notification_id", "").strip()
+    action = data.get("action", "").strip()
+    if not notif_id or action not in ("accept", "decline"):
+        return jsonify({"error": "notification_id and action (accept|decline) required"}), 400
+
+    db = get_db()
+    notif_ref = db.collection("notifications").document(notif_id)
+    notif = notif_ref.get()
+    if not notif.exists:
+        return jsonify({"error": "Notification not found"}), 404
+    n_data = notif.to_dict()
+    if n_data.get("user_id") != g.user_id:
+        return jsonify({"error": "Unauthorized"}), 403
+    if n_data.get("type") != "battle_challenge":
+        return jsonify({"error": "Not a battle challenge notification"}), 400
+    if n_data.get("read"):
+        return jsonify({"error": "Already responded to this challenge"}), 409
+
+    battle_id = (n_data.get("metadata") or {}).get("battle_id")
+    if not battle_id:
+        return jsonify({"error": "Corrupted notification"}), 500
+
+    notif_ref.update({"read": True})
+
+    if action == "decline":
+        db.collection("clan_battles").document(battle_id).update({"status": "declined"})
+        return jsonify({"message": "Battle challenge declined"}), 200
+
+    # Accept — validate and activate
+    battle_ref = db.collection("clan_battles").document(battle_id)
+    battle = battle_ref.get()
+    if not battle.exists:
+        return jsonify({"error": "Battle not found"}), 404
+    battle_data = battle.to_dict()
+    if battle_data["status"] != "pending":
+        return jsonify({"error": "Battle is no longer pending"}), 409
+
+    my_clan_id, my_clan = _get_user_clan(db, g.user_id)
+    if not my_clan or my_clan_id != battle_data["clan_b_id"]:
+        return jsonify({"error": "You are not the leader of the challenged clan"}), 403
+    if my_clan["leader_id"] != g.user_id:
+        return jsonify({"error": "Only the clan leader can accept battles"}), 403
+
+    battle_ref.update({"status": "active", "accepted_by": g.user_id})
+    return jsonify({"message": "Battle accepted! The war begins.", "battle_id": battle_id}), 200
 
 
 @battle_bp.route("/<battle_id>", methods=["GET"])

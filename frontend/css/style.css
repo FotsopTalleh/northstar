@@ -111,6 +111,10 @@ a:hover { color: var(--accent); }
   padding: 6px 14px !important;
   border-radius: var(--radius-sm);
   transition: var(--transition);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .nav-link:hover, .nav-link.active {
   color: var(--text-primary) !important;
@@ -184,6 +188,7 @@ a:hover { color: var(--accent); }
   background: linear-gradient(135deg, var(--accent), #9b5de5);
   color: #fff;
   padding: 10px 24px;
+  min-height: 44px;
   box-shadow: 0 4px 20px var(--accent-glow);
 }
 .btn-primary-custom:hover {
@@ -209,11 +214,13 @@ a:hover { color: var(--accent); }
   background: linear-gradient(135deg, #ff4f6d, #c0392b);
   color: #fff;
   padding: 8px 18px;
+  min-height: 36px;
 }
 .btn-success-custom {
   background: linear-gradient(135deg, #2ecc71, #27ae60);
   color: #fff;
   padding: 8px 18px;
+  min-height: 36px;
 }
 .btn-gold {
   background: linear-gradient(135deg, var(--gold), #e67e22);
@@ -333,6 +340,7 @@ a:hover { color: var(--accent); }
   margin-bottom: 10px;
   transition: var(--transition);
   cursor: default;
+  flex-wrap: wrap;
 }
 .task-item:hover { border-color: var(--border-glow); background: rgba(108,99,255,0.05); }
 
@@ -870,8 +878,33 @@ a:hover { color: var(--accent); }
   .toast-container { bottom: 80px; right: 12px; left: 12px; }
   .toast-item { min-width: unset; max-width: 100%; }
 
-  /* Notification dropdown opens upwards on mobile */
-  .notif-dropdown { right: auto; left: 0; width: 300px; }
+  /* Notification dropdown: full-screen overlay on mobile */
+  .notif-dropdown {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    z-index: 9999 !important;
+    overflow-y: auto !important;
+  }
+
+  /* Task actions wrap naturally on narrow screens */
+  .task-item { padding: 12px 14px; }
+  .task-item .d-flex.gap-2 { flex-wrap: wrap; gap: 6px !important; }
+  .task-item .btn-success-custom,
+  .task-item .btn-danger-custom { flex: 1; min-width: 80px; text-align: center; justify-content: center; }
+
+  /* Clan header stacks vertically */
+  .clan-header { padding: 20px 16px; }
+
+  /* Standardize small inline buttons */
+  .btn-success-custom, .btn-danger-custom, .btn-ghost, .btn-gold {
+    font-size: 0.85rem;
+  }
 }
 
 /* ═══════════════════════════════════════════════

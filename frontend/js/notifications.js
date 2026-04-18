@@ -57,12 +57,23 @@ function renderNotifications(notifs) {
   }
   list.innerHTML = notifs.slice(0, 20).map(n => {
     let actions = "";
+
+    // Clan invite — Accept / Decline
     if (n.type === "clan_invite" && !n.read) {
-      actions = `<div style="display:flex;gap:8px;margin-top:8px">
-        <button class="btn btn-success-custom" style="padding:4px 10px;font-size:0.75rem" onclick="event.stopPropagation(); respondInvite('${n.notification_id}', 'accept', this)">Accept</button>
-        <button class="btn btn-ghost" style="padding:4px 10px;font-size:0.75rem;padding:4px 10px" onclick="event.stopPropagation(); respondInvite('${n.notification_id}', 'decline', this)">Decline</button>
+      actions = `<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn btn-success-custom" style="padding:6px 14px;font-size:0.8rem;flex:1;min-width:80px" onclick="event.stopPropagation(); respondInvite('${n.notification_id}', 'accept', this)">Accept</button>
+        <button class="btn btn-ghost"         style="padding:6px 14px;font-size:0.8rem;flex:1;min-width:80px" onclick="event.stopPropagation(); respondInvite('${n.notification_id}', 'decline', this)">Decline</button>
       </div>`;
     }
+
+    // Battle challenge — Accept / Decline
+    if (n.type === "battle_challenge" && !n.read) {
+      actions = `<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn btn-danger-custom" style="padding:6px 14px;font-size:0.8rem;flex:1;min-width:80px" onclick="event.stopPropagation(); respondBattle('${n.notification_id}', 'accept', this)">Accept Battle</button>
+        <button class="btn btn-ghost"         style="padding:6px 14px;font-size:0.8rem;flex:1;min-width:80px" onclick="event.stopPropagation(); respondBattle('${n.notification_id}', 'decline', this)">Decline</button>
+      </div>`;
+    }
+
     return `
     <div class="notif-item ${n.read ? "" : "unread"}" data-id="${n.notification_id}" onclick="markRead('${n.notification_id}', this)">
       <p>${n.message}</p>
@@ -80,12 +91,28 @@ async function respondInvite(notifId, action, btn) {
     showToast(action === "accept" ? "Clan joined!" : "Invite declined", "success");
     await fetchNotifications();
     if (action === "accept" && window.location.pathname.includes("clan.html")) {
-      window.location.reload(); // Reload immediately to show clan view
+      window.location.reload();
     }
   } catch (err) {
     showToast(err.message, "error");
     setButtonLoading(btn, false, action === "accept" ? "Accept" : "Decline");
-  }}
+  }
+}
+
+async function respondBattle(notifId, action, btn) {
+  setButtonLoading(btn, true);
+  try {
+    await apiFetch("/api/battles/respond", "POST", { notification_id: notifId, action });
+    showToast(
+      action === "accept" ? "Battle accepted! The war begins." : "Challenge declined.",
+      action === "accept" ? "success" : "info"
+    );
+    await fetchNotifications();
+  } catch (err) {
+    showToast(err.message, "error");
+    setButtonLoading(btn, false, action === "accept" ? "Accept Battle" : "Decline");
+  }
+}
 
 async function markRead(notifId, el) {
   try {

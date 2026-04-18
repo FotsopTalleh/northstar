@@ -38,11 +38,16 @@ def notify_clan_falling_behind(member_ids: list, rival_clan_name: str):
         )
 
 
-def notify_battle_challenge(leader_id: str, challenger_clan_name: str):
+def notify_battle_challenge(leader_id: str, challenger_clan_name: str, battle_id: str, duration: str):
     create_notification(
         leader_id,
         "battle_challenge",
-        f"{challenger_clan_name} has challenged your clan to a battle!"
+        f"{challenger_clan_name} has challenged your clan to a battle! ({duration})",
+        metadata={
+            "battle_id": battle_id,
+            "challenger_clan_name": challenger_clan_name,
+            "duration": duration,
+        }
     )
 
 

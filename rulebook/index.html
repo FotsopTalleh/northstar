@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XPForge — Official Rule Book</title>
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@700&display=swap"
+        rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+
+                <!-- Header -->
+                <div class="text-center mb-5 hero-header">
+                    <i data-lucide="book-open" class="mb-3 text-accent" style="width: 48px; height: 48px;"></i>
+                    <h1 class="display-5 fw-bold font-display">Elite Guide to XPForge</h1>
+                    <p class="lead text-muted">
+                        Welcome to XPForge, the accountability system where your real-world productivity fuels your
+                        digital ranking.
+                        This isn't just a list app—it's a battlefield. To dominate the leaderboards, you need strict
+                        discipline and strategic planning.
+                    </p>
+                    <hr class="mt-4 mb-0 hr-custom">
+                </div>
+
+                <!-- Section 1 -->
+                <div class="rule-section mb-5">
+                    <h2 class="font-display d-flex align-items-center gap-2">
+                        <i data-lucide="coins" class="text-accent"></i> 1. The XP Economy
+                    </h2>
+                    <p>Your primary objective is to gain <strong>XP (Experience Points)</strong>. XP is the singular
+                        currency used to determine your rank, your power in Clan Battles, and your eligibility for
+                        Badges.</p>
+
+                    <ul class="list-group list-group-flush mb-4 shadow-sm border-radius-custom round-list">
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+                            <div>
+                                <strong>Planned Tasks</strong><br>
+                                <span class="text-muted small">Highest value targets. Log these before locking your
+                                    plan.</span>
+                            </div>
+                            <span class="badge bg-success rounded-pill px-3 py-2 fs-6">+7 XP</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+                            <div>
+                                <strong>Failed Planned Tasks</strong><br>
+                                <span class="text-muted small">Broken promises penalize you permanently.</span>
+                            </div>
+                            <span class="badge bg-danger rounded-pill px-3 py-2 fs-6">−4 XP</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center px-4 py-3">
+                            <div>
+                                <strong>Unplanned Tasks</strong><br>
+                                <span class="text-muted small">Unexpected crisis handling or minor bonus goals.</span>
+                            </div>
+                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fs-6">+3 XP</span>
+                        </li>
+                    </ul>
+
+                    <div
+                        class="alert alert-warning d-flex align-items-start shadow-sm border-warning border-opacity-50">
+                        <i data-lucide="alert-triangle" class="text-warning me-3 flex-shrink-0 mt-1"></i>
+                        <div>
+                            <strong>Provisional vs Finalized XP</strong>
+                            <p class="mb-0 mt-1 small">
+                                As you check off tasks, that XP is designated as "provisional" and added to your balance
+                                locally so you can see your active impact. However, the server runs a strict audit at
+                                exactly Midnight (UTC). Any planned tasks left unchecked at 11:59PM are immediately
+                                marked "Failed", subtracting −4 XP from your account before finalizing your score for
+                                the next day.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2 -->
+                <div class="rule-section mb-5">
+                    <h2 class="font-display d-flex align-items-center gap-2">
+                        <i data-lucide="lock" class="text-accent"></i> 2. Daily Operations: The "Lock"
+                    </h2>
+                    <p>Every day requires a rigid commitment. Consistency is the only metric that matters.</p>
+                    <ol class="custom-counter">
+                        <li><strong>Drafting:</strong> Start your day by dumping your critical targets into the Planned
+                            Tasks list.</li>
+                        <li><strong>Locking:</strong> To finalize your intent, press "Lock My Plan".</li>
+                        <li><strong>No Turning Back:</strong> Once a plan is locked, you can no longer add new Planned
+                            tasks or delete existing ones. You must see them through to completion or accept the failure
+                            penalty.</li>
+                    </ol>
+                    <p class="small text-muted mt-3"><em>Note: If unexpected work arises after locking your plan, drop
+                            it into the Unplanned Tasks input.</em></p>
+                </div>
+
+                <!-- Section 3 -->
+                <div class="rule-section mb-5">
+                    <h2 class="font-display d-flex align-items-center gap-2">
+                        <i data-lucide="trophy" class="text-accent"></i> 3. The Leaderboard Ecosystem
+                    </h2>
+                    <p>The objective of XP is dominance across 5 unique timelines. Your score automatically feeds into
+                        each one simultaneously:</p>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="card h-100 shadow-sm border-0 bg-light-card">
+                                <div class="card-body">
+                                    <h6 class="fw-bold"><i data-lucide="sun" class="icon-sm text-accent me-2"></i>Daily
+                                    </h6>
+                                    <p class="small text-muted mb-0">Resets every night. High reflex speed required.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100 shadow-sm border-0 bg-light-card">
+                                <div class="card-body">
+                                    <h6 class="fw-bold"><i data-lucide="calendar-days"
+                                            class="icon-sm text-accent me-2"></i>Weekly</h6>
+                                    <p class="small text-muted mb-0">Tracks the Mon-Sun ISO calendar.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100 shadow-sm border-0 bg-light-card">
+                                <div class="card-body">
+                                    <h6 class="fw-bold"><i data-lucide="calendar"
+                                            class="icon-sm text-accent me-2"></i>Monthly / Yearly</h6>
+                                    <p class="small text-muted mb-0">Long-term grind boards tracking ultimate endurance.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100 shadow-sm border-0 bg-light-card">
+                                <div class="card-body">
+                                    <h6 class="fw-bold"><i data-lucide="globe"
+                                            class="icon-sm text-accent me-2"></i>Global</h6>
+                                    <p class="small text-muted mb-0">The all-time hall of fame.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4 -->
+                <div class="rule-section mb-5">
+                    <h2 class="font-display d-flex align-items-center gap-2">
+                        <i data-lucide="swords" class="text-accent"></i> 4. Clans & Warfare
+                    </h2>
+                    <p>Being a lone wolf restricts your growth. In XPForge, forming a <strong>Clan</strong> unlocks the
+                        ability to wage war and claim significant bragging rights.</p>
+
+                    <h5 class="fw-bold mt-4">Starting or Joining a Clan</h5>
+                    <ul class="mb-4">
+                        <li><strong>Creating:</strong> You can form a clan of up to 10 members.</li>
+                        <li><strong>Inviting:</strong> Copy the User ID at the bottom of a recruit's Profile page, and
+                            paste it into your Clan dashboard!</li>
+                        <li><strong>Joining:</strong> The recruit will receive an inline action button in their
+                            Notification Bell to Accept or Decline the request.</li>
+                    </ul>
+
+                    <h5 class="fw-bold mt-4">Clan Battles</h5>
+                    <p>Clans can challenge each other to fierce, time-limited skirmishes.</p>
+                    <div class="bg-light-card p-4 rounded-4 shadow-sm mb-4 border border-light">
+                        <ol class="mb-0">
+                            <li class="mb-2"><strong>Challenging:</strong> The Clan Leader requires the <em>Clan ID</em>
+                                of a rival clan.</li>
+                            <li class="mb-2"><strong>Duration:</strong> Choose to fight for 1-Day or 7-Days.</li>
+                            <li><strong>The Goal:</strong> Both clans simply complete tasks. The total XP earned by all
+                                clan members combined during the battle window dictates the winner via a live Tug-of-War
+                                progress bar.</li>
+                        </ol>
+                    </div>
+
+                    <div class="alert alert-danger d-flex align-items-start shadow-sm border-danger border-opacity-25"
+                        style="background-color: #fff0f0;">
+                        <i data-lucide="skull" class="text-danger me-3 flex-shrink-0 mt-1"></i>
+                        <div>
+                            <strong>Beware the weak link!</strong>
+                            <p class="mb-0 mt-1 small text-dark">
+                                If a member in your clan fails their planned tasks, their −4 XP penalty hurts the
+                                combined Clan score during an active battle! Choose your roster wisely and do not
+                                hesitate to kick inactive players.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 5 -->
+                <div class="rule-section mb-5 pb-5 border-bottom">
+                    <h2 class="font-display d-flex align-items-center gap-2">
+                        <i data-lucide="settings" class="text-accent"></i> 5. Account Maintenance
+                    </h2>
+                    <ul class="mb-0">
+                        <li class="mb-3">
+                            <strong>Darkness or Light:</strong> Customize your aesthetic intensity. Tap the Sun/Moon
+                            icon in your top navigation bar to globally flip your terminal into Light Mode or Dark Mode.
+                        </li>
+                        <li>
+                            <strong>Timezones:</strong> XPForge calculates the Midnight reset strictly based on
+                            Universal Time (UTC). However, inside your Profile panel, you can adjust your own timezone
+                            marker so external friends know where you belong.
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- QR Code Access -->
+                <div class="text-center py-5">
+                    <p class="text-muted small text-uppercase fw-bold mb-3" style="letter-spacing:0.1em">Scan to Launch XPForge</p>
+                    <div style="display:inline-block;background:#fff;border-radius:16px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
+                        <img
+                            src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://web-production-ca0e.up.railway.app/&color=6c63ff&bgcolor=ffffff&qzone=1"
+                            alt="QR code to open XPForge"
+                            width="200"
+                            height="200"
+                            style="display:block;border-radius:8px"
+                        />
+                    </div>
+                    <p class="mt-3 small" style="color:#6c63ff;font-weight:600">web-production-ca0e.up.railway.app</p>
+                    <p class="text-muted small pb-2">
+                        XPForge Accountability System &copy; 2026. &nbsp; Execute your plan.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize icons
+        lucide.createIcons();
+    </script>
+</body>
+
+</html>

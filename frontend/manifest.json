@@ -1,0 +1,37 @@
+{
+  "name": "XPForge",
+  "short_name": "XPForge",
+  "description": "Accountability system where your real-world productivity fuels your digital ranking.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0b0f",
+  "theme_color": "#6c63ff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://api.iconify.design/lucide/zap.svg?color=%236c63ff&width=192&height=192",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://api.iconify.design/lucide/zap.svg?color=%236c63ff&width=512&height=512",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "lifestyle"],
+  "shortcuts": [
+    {
+      "name": "Today's Plan",
+      "url": "/dashboard.html",
+      "description": "View and manage today's tasks"
+    },
+    {
+      "name": "Leaderboard",
+      "url": "/leaderboard.html",
+      "description": "Check your rank"
+    }
+  ]
+}

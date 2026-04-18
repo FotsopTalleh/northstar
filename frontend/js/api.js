@@ -27,6 +27,37 @@ function toggleTheme() {
   });
 }
 
+// ── PWA: Service Worker Registration ────────────────────────────────────────
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js")
+      .then(reg => {
+        // Listen for sync-complete messages from SW
+        navigator.serviceWorker.addEventListener("message", (e) => {
+          if (e.data?.type === "SYNC_COMPLETE") {
+            showToast("🔄 Offline actions synced!", "success");
+            // Reload dashboard data if on that page
+            if (typeof loadDashboard === "function") loadDashboard();
+            if (typeof fetchNotifications === "function") fetchNotifications();
+          }
+        });
+      })
+      .catch(err => console.warn("SW registration failed:", err));
+  });
+}
+
+// ── Online/offline indicator ─────────────────────────────────────────────────
+window.addEventListener("online", () => {
+  showToast("Back online — syncing...", "info");
+  // Trigger background sync manually if supported
+  navigator.serviceWorker?.ready.then(reg => {
+    if (reg.sync) reg.sync.register("xpforge-sync").catch(() => {});
+  });
+});
+window.addEventListener("offline", () => {
+  showToast("You are offline. Changes will sync when reconnected.", "info");
+});
+
 
 function getToken() {
   return localStorage.getItem("jwt_token");
@@ -76,6 +107,12 @@ async function apiFetch(endpoint, method = "GET", body = null) {
     data = await response.json();
   } catch (_) {
     data = {};
+  }
+
+  // 202 = queued offline by service worker — treat as optimistic success
+  if (response.status === 202 && data?.offline) {
+    showToast(data.message || "Saved offline – will sync when reconnected.", "info");
+    return data;
   }
 
   if (!response.ok) {

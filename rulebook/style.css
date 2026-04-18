@@ -1,0 +1,89 @@
+:root {
+    --accent: #6c63ff;
+    --font-main: 'Inter', sans-serif;
+    --font-display: 'Space Grotesk', sans-serif;
+    --bg-base: #fafbfe;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--bg-base);
+    color: #333;
+    line-height: 1.6;
+}
+
+.font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+}
+
+.text-accent {
+    color: var(--accent);
+}
+
+.hero-header {
+    margin-top: 2rem;
+}
+
+.hr-custom {
+    border-top: 2px solid rgba(108, 99, 255, 0.2);
+    width: 60px;
+    margin: 0 auto;
+}
+
+.rule-section {
+    background-color: #ffffff;
+    padding: 2.5rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02), 0 1px 3px rgba(0,0,0,0.03);
+    border: 1px solid rgba(0,0,0,0.04);
+}
+
+.rule-section h2 {
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+    font-size: 1.5rem;
+}
+
+.border-radius-custom {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.bg-light-card {
+    background-color: #f8f9fa;
+}
+
+/* Custom Ordered List */
+.custom-counter {
+    list-style: none;
+    counter-reset: custom-counter;
+    padding-left: 0;
+}
+.custom-counter li {
+    position: relative;
+    padding-left: 2.5rem;
+    margin-bottom: 1rem;
+}
+.custom-counter li::before {
+    counter-increment: custom-counter;
+    content: counter(custom-counter);
+    position: absolute;
+    left: 0;
+    top: 2px;
+    width: 24px;
+    height: 24px;
+    background-color: rgba(108, 99, 255, 0.1);
+    color: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.icon-sm {
+    width: 18px;
+    height: 18px;
+}
