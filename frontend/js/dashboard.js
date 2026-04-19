@@ -24,20 +24,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("form-add-planned")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = document.getElementById("input-planned-title");
+    const btn   = e.target.querySelector("button[type=submit]");
     const title = input.value.trim();
     if (!title) return;
+    setButtonLoading(btn, true);
+    input.disabled = true;
     await addTask(title, "planned");
     input.value = "";
+    input.disabled = false;
+    setButtonLoading(btn, false);
   });
 
   // Add unplanned task
   document.getElementById("form-add-unplanned")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = document.getElementById("input-unplanned-title");
+    const btn   = e.target.querySelector("button[type=submit]");
     const title = input.value.trim();
     if (!title) return;
+    setButtonLoading(btn, true);
+    input.disabled = true;
     await addTask(title, "unplanned");
     input.value = "";
+    input.disabled = false;
+    setButtonLoading(btn, false);
   });
 
   // Lock plan

@@ -13,6 +13,11 @@ async function initNotifications() {
 
   bell.addEventListener("click", async (e) => {
     e.stopPropagation();
+    // On mobile: navigate to dedicated notifications page
+    if (window.innerWidth <= 768) {
+      window.location.href = "/notifications.html";
+      return;
+    }
     _notifOpen = !_notifOpen;
     dropdown.classList.toggle("open", _notifOpen);
     if (_notifOpen) await fetchNotifications();

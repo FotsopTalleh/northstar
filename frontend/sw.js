@@ -8,7 +8,7 @@
  *  - Background Sync: Replay queued mutations when back online
  */
 
-const CACHE_NAME    = "xpforge-v1";
+const CACHE_NAME    = "xpforge-v2";
 const OFFLINE_CACHE = "xpforge-offline-pages";
 
 const STATIC_ASSETS = [
@@ -17,6 +17,8 @@ const STATIC_ASSETS = [
   "/leaderboard.html",
   "/clan.html",
   "/profile.html",
+  "/about.html",
+  "/notifications.html",
   "/css/style.css",
   "/js/api.js",
   "/js/dashboard.js",

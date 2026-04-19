@@ -14,13 +14,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const loginForm  = document.getElementById("form-login");
   const signupForm = document.getElementById("form-signup");
 
-  loginTab.addEventListener("click", () => switchTab("login"));
+  loginTab.addEventListener("click",  () => switchTab("login"));
   signupTab.addEventListener("click", () => switchTab("signup"));
 
   function switchTab(tab) {
-    loginTab.classList.toggle("active", tab === "login");
+    loginTab.classList.toggle("active",  tab === "login");
     signupTab.classList.toggle("active", tab === "signup");
-    loginForm.classList.toggle("d-none", tab !== "login");
+    loginForm.classList.toggle("d-none",  tab !== "login");
     signupForm.classList.toggle("d-none", tab !== "signup");
   }
 
@@ -28,11 +28,10 @@ document.addEventListener("DOMContentLoaded", () => {
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = loginForm.querySelector("button[type=submit]");
-    btn.disabled = true;
-    btn.textContent = "Signing in…";
+    setButtonLoading(btn, true);
     try {
       const data = await apiFetch("/api/auth/login", "POST", {
-        email: document.getElementById("login-email").value.trim(),
+        email:    document.getElementById("login-email").value.trim(),
         password: document.getElementById("login-password").value,
       });
       setToken(data.token);
@@ -40,8 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
       window.location.href = "/dashboard.html";
     } catch (err) {
       showToast(err.message, "error");
-      btn.disabled = false;
-      btn.textContent = "Sign In";
+      setButtonLoading(btn, false, "Sign In");
     }
   });
 
@@ -49,8 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
   signupForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = signupForm.querySelector("button[type=submit]");
-    btn.disabled = true;
-    btn.textContent = "Creating account…";
+    setButtonLoading(btn, true);
     try {
       const data = await apiFetch("/api/auth/signup", "POST", {
         email:    document.getElementById("signup-email").value.trim(),
@@ -63,8 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
       window.location.href = "/dashboard.html";
     } catch (err) {
       showToast(err.message, "error");
-      btn.disabled = false;
-      btn.textContent = "Create Account";
+      setButtonLoading(btn, false, "Create Account");
     }
   });
 });
