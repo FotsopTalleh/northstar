@@ -31,8 +31,8 @@ document.addEventListener("DOMContentLoaded", () => {
     setButtonLoading(btn, true);
     try {
       const data = await apiFetch("/api/auth/login", "POST", {
-        email:    document.getElementById("login-email").value.trim(),
-        password: document.getElementById("login-password").value,
+        identifier: document.getElementById("login-identifier").value.trim(),
+        password:   document.getElementById("login-password").value,
       });
       setToken(data.token);
       setUser(data.user);
@@ -88,8 +88,11 @@ function showForgot() {
   document.getElementById("form-login").classList.add("d-none");
   document.getElementById("forgot-panel").classList.remove("d-none");
   // Pre-fill email if already typed
-  const loginEmail = document.getElementById("login-email")?.value.trim();
-  if (loginEmail) document.getElementById("forgot-email").value = loginEmail;
+  const loginIdentifier = document.getElementById("login-identifier")?.value.trim();
+  // Only pre-fill if the user typed an email (contains @)
+  if (loginIdentifier && loginIdentifier.includes("@")) {
+    document.getElementById("forgot-email").value = loginIdentifier;
+  }
   if (window.lucide) window.lucide.createIcons();
 }
 

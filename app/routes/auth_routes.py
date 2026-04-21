@@ -124,15 +124,22 @@ def signup():
 # ─── LOGIN ───────────────────────────────────────────────────────────────────
 @auth_bp.route("/login", methods=["POST"])
 def login():
-    data     = request.get_json(silent=True) or {}
-    email    = data.get("email", "").strip().lower()
-    password = data.get("password", "")
+    data       = request.get_json(silent=True) or {}
+    # Accept `identifier` (email or username) or legacy `email` field
+    identifier = (data.get("identifier") or data.get("email") or "").strip()
+    password   = data.get("password", "")
 
-    if not email or not password:
-        return jsonify({"error": "email and password are required"}), 400
+    if not identifier or not password:
+        return jsonify({"error": "Email/username and password are required"}), 400
 
     db = get_db()
-    users = db.collection("users").where("email", "==", email).limit(1).get()
+
+    # Detect whether the user typed an email or a username
+    if "@" in identifier:
+        users = db.collection("users").where("email", "==", identifier.lower()).limit(1).get()
+    else:
+        users = db.collection("users").where("username", "==", identifier).limit(1).get()
+
     if not users:
         return jsonify({"error": "Invalid credentials"}), 401
 
@@ -144,7 +151,7 @@ def login():
     if not bcrypt.checkpw(password.encode(), user_data["password_hash"].encode()):
         return jsonify({"error": "Invalid credentials"}), 401
 
-    token = _generate_jwt(user_data["user_id"], email)
+    token = _generate_jwt(user_data["user_id"], user_data["email"])
     return jsonify({
         "token": token,
         "user": {
