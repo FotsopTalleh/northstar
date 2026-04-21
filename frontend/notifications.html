@@ -150,21 +150,25 @@
 
       list.innerHTML = notifs.map(n => {
         const typeIcon = {
-          clan_invite:       "users",
-          battle_challenge:  "swords",
-          overtaken:         "trending-down",
-          clan_behind:       "alert-triangle",
-          daily_summary:     "sun",
-          peer_activity:     "activity",
+          clan_invite:             "users",
+          battle_challenge:        "swords",
+          overtaken:               "trending-down",
+          clan_behind:             "alert-triangle",
+          daily_summary:           "sun",
+          peer_activity:           "activity",
+          no_tasks_reminder:       "clipboard-list",
+          tasks_pending_reminder:  "clock",
         }[n.type] || "bell";
 
         const typeColor = {
-          clan_invite:       "var(--accent-light)",
-          battle_challenge:  "var(--danger)",
-          overtaken:         "var(--warning)",
-          clan_behind:       "var(--danger)",
-          daily_summary:     "var(--gold)",
-          peer_activity:     "var(--success)",
+          clan_invite:             "var(--accent-light)",
+          battle_challenge:        "var(--danger)",
+          overtaken:               "var(--warning)",
+          clan_behind:             "var(--danger)",
+          daily_summary:           "var(--gold)",
+          peer_activity:           "var(--success)",
+          no_tasks_reminder:       "var(--warning)",
+          tasks_pending_reminder:  "var(--accent-light)",
         }[n.type] || "var(--text-muted)";
 
         let actions = "";

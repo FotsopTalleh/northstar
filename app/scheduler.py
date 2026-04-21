@@ -169,6 +169,126 @@ def midnight_job():
     logger.info("[Scheduler] Midnight job complete.")
 
 
+def morning_reminder_job():
+    """
+    Runs at 08:00 UTC.
+    Notifies users who haven't created any planned tasks for today yet.
+    Deduplicated: skips users who already received this notification today.
+    """
+    logger.info("[Scheduler] Morning reminder job started.")
+    try:
+        import pytz
+        from app.firebase import get_db
+        from app.services.notification_service import notify_no_tasks_created
+
+        db = get_db()
+        now_utc = datetime.now(timezone.utc)
+        all_users = db.collection("users").get()
+
+        for user_doc in all_users:
+            try:
+                user_data = user_doc.to_dict()
+                user_id   = user_data.get("user_id") or user_doc.id
+                tz_str    = user_data.get("timezone", "UTC")
+
+                try:
+                    tz = pytz.timezone(tz_str)
+                except Exception:
+                    tz = pytz.utc
+
+                today = datetime.now(tz).strftime("%Y-%m-%d")
+
+                # Skip if user already got this reminder today (dedup)
+                existing = (
+                    db.collection("notifications")
+                    .where("user_id", "==", user_id)
+                    .where("type", "==", "no_tasks_reminder")
+                    .get()
+                )
+                if any(d.to_dict().get("created_at", "")[:10] == today for d in existing):
+                    continue
+
+                # Check if any planned tasks exist for today
+                tasks_today = (
+                    db.collection("tasks")
+                    .where("user_id", "==", user_id)
+                    .where("date", "==", today)
+                    .where("type", "==", "planned")
+                    .limit(1)
+                    .get()
+                )
+                if not tasks_today:
+                    notify_no_tasks_created(user_id)
+
+            except Exception as e:
+                logger.warning(f"[Scheduler] Morning reminder failed for user {user_doc.id}: {e}")
+
+    except Exception as e:
+        logger.error(f"[Scheduler] Morning reminder job error: {e}")
+
+    logger.info("[Scheduler] Morning reminder job complete.")
+
+
+def evening_reminder_job():
+    """
+    Runs at 20:00 UTC.
+    Notifies users who have pending planned tasks for today.
+    Deduplicated: skips users who already received this notification today.
+    """
+    logger.info("[Scheduler] Evening reminder job started.")
+    try:
+        import pytz
+        from app.firebase import get_db
+        from app.services.notification_service import notify_tasks_pending
+
+        db = get_db()
+        now_utc = datetime.now(timezone.utc)
+        all_users = db.collection("users").get()
+
+        for user_doc in all_users:
+            try:
+                user_data = user_doc.to_dict()
+                user_id   = user_data.get("user_id") or user_doc.id
+                tz_str    = user_data.get("timezone", "UTC")
+
+                try:
+                    tz = pytz.timezone(tz_str)
+                except Exception:
+                    tz = pytz.utc
+
+                today = datetime.now(tz).strftime("%Y-%m-%d")
+
+                # Skip if user already got this reminder today (dedup)
+                existing = (
+                    db.collection("notifications")
+                    .where("user_id", "==", user_id)
+                    .where("type", "==", "tasks_pending_reminder")
+                    .get()
+                )
+                if any(d.to_dict().get("created_at", "")[:10] == today for d in existing):
+                    continue
+
+                # Count pending planned tasks for today
+                pending_tasks = (
+                    db.collection("tasks")
+                    .where("user_id", "==", user_id)
+                    .where("date", "==", today)
+                    .where("type", "==", "planned")
+                    .where("status", "==", "pending")
+                    .get()
+                )
+                if pending_tasks:
+                    notify_tasks_pending(user_id, len(pending_tasks))
+
+            except Exception as e:
+                logger.warning(f"[Scheduler] Evening reminder failed for user {user_doc.id}: {e}")
+
+    except Exception as e:
+        logger.error(f"[Scheduler] Evening reminder job error: {e}")
+
+    logger.info("[Scheduler] Evening reminder job complete.")
+
+
 def start_scheduler(app):
     scheduler = BackgroundScheduler(timezone="UTC")
     scheduler.add_job(
@@ -179,8 +299,25 @@ def start_scheduler(app):
         replace_existing=True,
         misfire_grace_time=300,
     )
+    scheduler.add_job(
+        func=morning_reminder_job,
+        trigger=CronTrigger(hour=8, minute=0, second=0, timezone="UTC"),
+        id="morning_reminder_job",
+        name="Morning task reminder",
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
+    scheduler.add_job(
+        func=evening_reminder_job,
+        trigger=CronTrigger(hour=20, minute=0, second=0, timezone="UTC"),
+        id="evening_reminder_job",
+        name="Evening pending tasks reminder",
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
     scheduler.start()
-    logger.info("[Scheduler] APScheduler started. Midnight job scheduled at 00:00 UTC.")
+    logger.info("[Scheduler] APScheduler started. Jobs: midnight(00:00), morning(08:00), evening(20:00) UTC.")
 
     import atexit
     atexit.register(lambda: scheduler.shutdown(wait=False))
+

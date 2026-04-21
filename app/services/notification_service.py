@@ -64,3 +64,21 @@ def notify_peer_tasks(user_id: str, peer_username: str, task_count: int):
         "peer_activity",
         f"{peer_username} completed {task_count} task{'s' if task_count != 1 else ''} today."
     )
+
+
+def notify_no_tasks_created(user_id: str):
+    """Morning reminder: user hasn't created any planned tasks yet today."""
+    create_notification(
+        user_id,
+        "no_tasks_reminder",
+        "⏰ Morning check-in: You haven't planned your tasks for today yet. Lock in your goals now!"
+    )
+
+
+def notify_tasks_pending(user_id: str, pending_count: int):
+    """Evening reminder: user has uncompleted planned tasks."""
+    create_notification(
+        user_id,
+        "tasks_pending_reminder",
+        f"⚡ Heads up! You still have {pending_count} pending task{'s' if pending_count != 1 else ''} for today. Don't let the day slip away!"
+    )
