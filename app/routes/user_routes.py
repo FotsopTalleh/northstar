@@ -54,6 +54,32 @@ def update_me():
     return jsonify({"message": "Profile updated", **allowed}), 200
 
 
+@user_bp.route("/me/push-subscription", methods=["POST"])
+@require_auth
+def save_push_subscription():
+    data = request.get_json()
+    if not data or "endpoint" not in data or "keys" not in data:
+        return jsonify({"error": "Invalid subscription data"}), 400
+
+    db = get_db()
+    user_ref = db.collection("users").document(g.user_id)
+    
+    # Read, modify, and write for simplicity.
+    user_doc = user_ref.get()
+    if user_doc.exists:
+        subs = user_doc.to_dict().get("push_subscriptions", [])
+        if not any(s.get("endpoint") == data["endpoint"] for s in subs):
+            subs.append(data)
+            user_ref.update({"push_subscriptions": subs})
+
+    return jsonify({"message": "Subscription saved"}), 200
+
+@user_bp.route("/vapid-key", methods=["GET"])
+def get_vapid_key():
+    from app.config import Config
+    return jsonify({"vapid_public_key": Config.VAPID_PUBLIC_KEY}), 200
+
+
 @user_bp.route("/<user_id>", methods=["GET"])
 @require_auth
 def get_user(user_id):

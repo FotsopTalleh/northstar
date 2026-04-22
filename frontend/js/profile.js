@@ -54,6 +54,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
       try {
         await apiFetch("/api/users/me", "PATCH", { notifications_enabled: enabled });
+        if (enabled) {
+          // If user enables notifications, try to subscribe to Push
+          await subscribeToPush();
+        }
         showToast(enabled ? "Notifications enabled" : "Notifications disabled", "success");
       } catch (err) {
         // Revert the toggle if the request failed
@@ -64,6 +68,59 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 });
+
+// Helper to convert VAPID key
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+async function subscribeToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    console.warn("Push messaging is not supported");
+    return;
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      console.warn("Push permission denied");
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    
+    if (!subscription) {
+      // Get VAPID public key from backend
+      const res = await apiFetch("/api/users/vapid-key");
+      if (!res.vapid_public_key) throw new Error("No VAPID key");
+      
+      const applicationServerKey = urlBase64ToUint8Array(res.vapid_public_key);
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey
+      });
+    }
+
+    // Send subscription to backend
+    await apiFetch("/api/users/me/push-subscription", "POST", subscription);
+    console.log("Successfully subscribed to push notifications");
+  } catch (err) {
+    console.error("Failed to subscribe to push notifications:", err);
+  }
+}
+
 
 
 async function loadProfile() {

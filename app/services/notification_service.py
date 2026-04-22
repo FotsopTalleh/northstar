@@ -18,6 +18,38 @@ def create_notification(user_id: str, notif_type: str, message: str, metadata: d
     if metadata:
         doc["metadata"] = metadata
     db.collection("notifications").document(notif_id).set(doc)
+
+    # Trigger Web Push notification in the background
+    try:
+        from app.services.push_service import send_web_push
+        import threading
+        
+        # Map notification types to titles
+        titles = {
+            "clan_invite": "New Clan Invite",
+            "battle_challenge": "Battle Challenge",
+            "overtaken": "Leaderboard Alert",
+            "clan_behind": "Clan Battle Alert",
+            "clan_losing": "Clan Battle Warning",
+            "daily_summary": "Daily Summary",
+            "peer_activity": "Friend Activity",
+            "no_tasks_reminder": "Morning Reminder",
+            "plan_not_locked": "Plan Reminder",
+            "tasks_pending_reminder": "Evening Reminder",
+            "reached_top": "Achievement Unlocked"
+        }
+        title = titles.get(notif_type, "XPForge Notification")
+        
+        # Run in thread so it doesn't block the API response
+        threading.Thread(
+            target=send_web_push,
+            args=(user_id, title, message),
+            daemon=True
+        ).start()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error triggering push notification: {e}")
+
     return notif_id
 
 

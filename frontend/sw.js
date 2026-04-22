@@ -204,3 +204,51 @@ async function flushQueueSW() {
   const clients = await self.clients.matchAll({ type: "window" });
   clients.forEach(c => c.postMessage({ type: "SYNC_COMPLETE" }));
 }
+
+// ─── PUSH NOTIFICATIONS ─────────────────────────────────
+self.addEventListener("push", (event) => {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { body: event.data.text() };
+    }
+  }
+
+  const title = data.title || "XPForge";
+  const options = {
+    body: data.body || "New notification",
+    icon: data.icon || "/icons/icon-192x192.png",
+    badge: "/icons/badge-72x72.png",
+    data: {
+      url: data.url || "/notifications.html"
+    },
+    vibrate: [100, 50, 100]
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  
+  const targetUrl = event.notification.data.url;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // If a window tab is already open, focus it and navigate
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      // Otherwise open a new window
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
