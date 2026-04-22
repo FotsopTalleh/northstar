@@ -8,7 +8,7 @@
  *  - Background Sync: Replay queued mutations when back online
  */
 
-const CACHE_NAME    = "xpforge-v3";
+const CACHE_NAME = "xpforge-v4";
 const OFFLINE_CACHE = "xpforge-offline-pages";
 
 const STATIC_ASSETS = [
@@ -46,7 +46,7 @@ self.addEventListener("activate", (event) => {
     caches.keys().then(keys =>
       Promise.all(
         keys.filter(k => k !== CACHE_NAME && k !== OFFLINE_CACHE)
-            .map(k => caches.delete(k))
+          .map(k => caches.delete(k))
       )
     ).then(() => self.clients.claim())
   );
@@ -127,7 +127,7 @@ async function handleMutation(request) {
     });
 
     // Register a background sync
-    self.registration.sync.register("xpforge-sync").catch(() => {});
+    self.registration.sync.register("xpforge-sync").catch(() => { });
 
     // Return optimistic 202 so the app can proceed
     return new Response(
@@ -145,7 +145,7 @@ self.addEventListener("sync", (event) => {
 });
 
 // ─── INDEXEDDB HELPERS (inline, SW scope) ───────────────
-const IDB_NAME  = "xpforge-offline";
+const IDB_NAME = "xpforge-offline";
 const IDB_STORE = "queue";
 
 function openIDB() {
@@ -153,7 +153,7 @@ function openIDB() {
     const req = indexedDB.open(IDB_NAME, 1);
     req.onupgradeneeded = (e) => e.target.result.createObjectStore(IDB_STORE, { autoIncrement: true });
     req.onsuccess = (e) => resolve(e.target.result);
-    req.onerror   = (e) => reject(e.target.error);
+    req.onerror = (e) => reject(e.target.error);
   });
 }
 
@@ -168,7 +168,7 @@ async function queueAction(action) {
 }
 
 async function flushQueueSW() {
-  const db   = await openIDB();
+  const db = await openIDB();
   const items = await new Promise((res, rej) => {
     const tx = db.transaction(IDB_STORE, "readonly");
     const req = tx.objectStore(IDB_STORE).getAll();
