@@ -42,7 +42,29 @@ document.addEventListener("DOMContentLoaded", async () => {
       setButtonLoading(btn, false);
     }
   });
+
+  // Notification toggle
+  const toggle = document.getElementById("notif-enabled-toggle");
+  if (toggle) {
+    toggle.addEventListener("change", async () => {
+      const enabled = toggle.checked;
+      const label = document.getElementById("notif-toggle-label");
+      if (label) {
+        label.textContent = enabled ? "Notifications On" : "Notifications Off";
+      }
+      try {
+        await apiFetch("/api/users/me", "PATCH", { notifications_enabled: enabled });
+        showToast(enabled ? "Notifications enabled" : "Notifications disabled", "success");
+      } catch (err) {
+        // Revert the toggle if the request failed
+        toggle.checked = !enabled;
+        if (label) label.textContent = !enabled ? "Notifications On" : "Notifications Off";
+        showToast(err.message, "error");
+      }
+    });
+  }
 });
+
 
 async function loadProfile() {
   try {
@@ -70,6 +92,13 @@ function renderProfile(user) {
   const colorInput = document.getElementById("edit-avatar-color");
   if (tzInput) tzInput.value = user.timezone || "";
   if (colorInput) colorInput.value = user.avatar_color || "#6C63FF";
+
+  // Sync notification toggle state
+  const toggle = document.getElementById("notif-enabled-toggle");
+  const label  = document.getElementById("notif-toggle-label");
+  const enabled = user.notifications_enabled !== false; // default true
+  if (toggle) toggle.checked = enabled;
+  if (label)  label.textContent = enabled ? "Notifications On" : "Notifications Off";
 
   // Badges
   const badgeEl = document.getElementById("profile-badges");
@@ -113,3 +142,14 @@ function setProfileEl(id, val) {
   if (el) el.textContent = val || "—";
 }
 function esc(str) { return String(str||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+async function fireTest(type) {
+  try {
+    await apiFetch("/api/notifications/test", "POST", { type });
+    showToast("Test notification sent — check your bell!", "success");
+    // Refresh bell badge immediately
+    if (typeof fetchNotifications === "function") await fetchNotifications();
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}

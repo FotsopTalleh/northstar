@@ -196,6 +196,10 @@ def morning_reminder_job():
                 user_id   = user_data.get("user_id") or user_doc.id
                 tz_str    = user_data.get("timezone", "UTC")
 
+                # Skip users who have opted out of notifications
+                if not user_data.get("notifications_enabled", True):
+                    continue
+
                 try:
                     tz = pytz.timezone(tz_str)
                 except Exception:
@@ -272,6 +276,10 @@ def evening_reminder_job():
                 user_data = user_doc.to_dict()
                 user_id   = user_data.get("user_id") or user_doc.id
                 tz_str    = user_data.get("timezone", "UTC")
+
+                # Skip users who have opted out of notifications
+                if not user_data.get("notifications_enabled", True):
+                    continue
 
                 try:
                     tz = pytz.timezone(tz_str)
@@ -378,6 +386,10 @@ def battle_check_job():
 
                 for uid in losing_members:
                     try:
+                        # Skip opted-out users
+                        u_doc = db.collection("users").document(uid).get()
+                        if u_doc.exists and not u_doc.to_dict().get("notifications_enabled", True):
+                            continue
                         # Dedup: one clan_losing notification per battle per day
                         existing = (
                             db.collection("notifications")

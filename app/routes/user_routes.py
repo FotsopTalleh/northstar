@@ -40,6 +40,12 @@ def update_me():
             return jsonify({"error": "avatar_color must be a hex code like #FF5733"}), 400
         allowed["avatar_color"] = color
 
+    if "notifications_enabled" in data:
+        val = data["notifications_enabled"]
+        if not isinstance(val, bool):
+            return jsonify({"error": "notifications_enabled must be true or false"}), 400
+        allowed["notifications_enabled"] = val
+
     if not allowed:
         return jsonify({"error": "No valid fields to update"}), 400
 
@@ -56,7 +62,6 @@ def get_user(user_id):
     if not user.exists:
         return jsonify({"error": "User not found"}), 404
     u = user.to_dict()
-    # Public profile: strip sensitive fields
     return jsonify({
         "user_id": u.get("user_id"),
         "username": u.get("username"),

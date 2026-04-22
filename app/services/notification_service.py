@@ -71,7 +71,7 @@ def notify_no_tasks_created(user_id: str):
     create_notification(
         user_id,
         "no_tasks_reminder",
-        "⏰ Morning check-in: You haven't planned your tasks for today yet. Lock in your goals now!"
+        "Morning check-in: You haven't planned your tasks for today yet. Lock in your goals now!"
     )
 
 
@@ -80,7 +80,7 @@ def notify_tasks_pending(user_id: str, pending_count: int):
     create_notification(
         user_id,
         "tasks_pending_reminder",
-        f"⚡ Heads up! You still have {pending_count} pending task{'s' if pending_count != 1 else ''} for today. Don't let the day slip away!"
+        f"You still have {pending_count} pending task{'s' if pending_count != 1 else ''} for today. Don't let the day slip away!"
     )
 
 
@@ -89,7 +89,7 @@ def notify_no_plan_locked(user_id: str, task_count: int):
     create_notification(
         user_id,
         "plan_not_locked",
-        f"🔓 You have {task_count} task{'s' if task_count != 1 else ''} but your plan is not locked yet. Lock it in to commit to your day!"
+        f"You have {task_count} task{'s' if task_count != 1 else ''} but your plan is not locked yet. Lock it in to commit to your day!"
     )
 
 
@@ -99,7 +99,7 @@ def notify_clan_losing(user_id: str, rival_clan_name: str, our_avg: float, their
     create_notification(
         user_id,
         "clan_losing",
-        f"⚔️ Your clan is losing the battle vs {rival_clan_name}! They lead by {gap} avg XP. Complete your tasks to catch up!",
+        f"Your clan is losing the battle vs {rival_clan_name}! They lead by {gap} avg XP. Complete your tasks to catch up!",
         metadata={"battle_id": battle_id} if battle_id else None
     )
 
@@ -109,5 +109,5 @@ def notify_reached_top(user_id: str, period_label: str):
     create_notification(
         user_id,
         "reached_top",
-        f"🏆 You're #1 on the {period_label} leaderboard! You're the beast — keep the lead!"
+        f"You are now #1 on the {period_label} leaderboard! You are the beast — keep the lead!"
     )

@@ -1,6 +1,7 @@
-from flask import Blueprint, jsonify, g
+from flask import Blueprint, jsonify, g, request
 from app.firebase import get_db
 from app.middleware import require_auth
+from app.services.notification_service import create_notification
 
 notification_bp = Blueprint("notifications", __name__, url_prefix="/api/notifications")
 
@@ -48,3 +49,36 @@ def mark_all_read():
         batch.update(doc.reference, {"read": True})
     batch.commit()
     return jsonify({"message": f"Marked {len(docs)} notifications as read"}), 200
+
+
+# ── TEST ENDPOINT ─────────────────────────────────────────────────────────────
+_TEST_MESSAGES = {
+    "no_tasks_reminder":      "Morning check-in: You haven't planned your tasks for today yet. Lock in your goals now!",
+    "plan_not_locked":        "You have tasks but your plan is not locked yet. Lock it in to commit to your day!",
+    "tasks_pending_reminder": "You still have 3 pending tasks for today. Don't let the day slip away!",
+    "clan_losing":            "Your clan is losing the battle vs Rival Clan! They lead by 12.5 avg XP. Complete your tasks to catch up!",
+    "overtaken":              "SomePlayer just passed you on the daily leaderboard!",
+    "reached_top":            "You are now #1 on the daily leaderboard! You are the beast — keep the lead!",
+    "battle_challenge":       "WarClan has challenged your clan to a battle! (1d)",
+    "daily_summary":          "Day complete! XP: +42 | Rank: #3",
+    "peer_activity":          "BeastMode99 completed 5 tasks today.",
+}
+
+
+@notification_bp.route("/test", methods=["POST"])
+@require_auth
+def send_test_notification():
+    data = request.get_json(silent=True) or {}
+    notif_type = data.get("type", "").strip()
+
+    if notif_type not in _TEST_MESSAGES:
+        return jsonify({
+            "error": f"Unknown type. Valid types: {list(_TEST_MESSAGES.keys())}"
+        }), 400
+
+    notif_id = create_notification(
+        g.user_id,
+        notif_type,
+        _TEST_MESSAGES[notif_type],
+    )
+    return jsonify({"message": "Test notification sent", "notification_id": notif_id}), 201

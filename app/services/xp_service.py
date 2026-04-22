@@ -81,24 +81,32 @@ def award_provisional_xp(user_id: str, task_id: str, task_type: str) -> dict:
 
     # ── Rank-change notifications ─────────────────────────────────────────────
     try:
-        from app.services.notification_service import notify_overtaken, notify_reached_top
-        ranks_after  = _snapshot_daily_ranks()
-        my_rank_after = ranks_after.get(user_id, 9999)
+        if user_data.get("notifications_enabled", True):
+            from app.services.notification_service import notify_overtaken, notify_reached_top
+            ranks_after   = _snapshot_daily_ranks()
+            my_rank_after = ranks_after.get(user_id, 9999)
 
-        if my_rank_after < my_rank_before:
-            my_username = user_data.get("username", "Someone")
+            if my_rank_after < my_rank_before:
+                my_username = user_data.get("username", "Someone")
 
-            # Notify every user whose old rank sat between my new and old rank —
-            # those are exactly the people I leapfrogged.
-            for uid, old_rank in ranks_before.items():
-                if uid == user_id:
-                    continue
-                if my_rank_after <= old_rank < my_rank_before:
-                    notify_overtaken(uid, my_username)
+                # Notify every user whose old rank sat between my new and old rank —
+                # those are exactly the people I leapfrogged.
+                for uid, old_rank in ranks_before.items():
+                    if uid == user_id:
+                        continue
+                    if my_rank_after <= old_rank < my_rank_before:
+                        # Only notify if that user has notifications on
+                        try:
+                            other = db.collection("users").document(uid).get()
+                            if other.exists and not other.to_dict().get("notifications_enabled", True):
+                                continue
+                        except Exception:
+                            pass
+                        notify_overtaken(uid, my_username)
 
-            # Celebrate reaching #1 on the daily board
-            if my_rank_after == 1 and my_rank_before != 1:
-                notify_reached_top(user_id, "daily")
+                # Celebrate reaching #1 on the daily board
+                if my_rank_after == 1 and my_rank_before != 1:
+                    notify_reached_top(user_id, "daily")
     except Exception:
         pass  # Never let notification errors break XP award
 
