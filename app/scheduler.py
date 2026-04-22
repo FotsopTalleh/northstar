@@ -25,6 +25,7 @@ def midnight_job():
         notify_daily_summary, notify_peer_tasks
     )
 
+
     db = get_db()
     yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
 
@@ -172,17 +173,21 @@ def midnight_job():
 def morning_reminder_job():
     """
     Runs at 08:00 UTC.
-    Notifies users who haven't created any planned tasks for today yet.
-    Deduplicated: skips users who already received this notification today.
+    Two checks per user:
+      1. No planned tasks at all  → notify_no_tasks_created
+      2. Has tasks but plan not locked → notify_no_plan_locked
+    Both are deduplicated (one per user per day).
     """
     logger.info("[Scheduler] Morning reminder job started.")
     try:
         import pytz
         from app.firebase import get_db
-        from app.services.notification_service import notify_no_tasks_created
+        from app.services.notification_service import (
+            notify_no_tasks_created,
+            notify_no_plan_locked,
+        )
 
         db = get_db()
-        now_utc = datetime.now(timezone.utc)
         all_users = db.collection("users").get()
 
         for user_doc in all_users:
@@ -198,27 +203,44 @@ def morning_reminder_job():
 
                 today = datetime.now(tz).strftime("%Y-%m-%d")
 
-                # Skip if user already got this reminder today (dedup)
-                existing = (
-                    db.collection("notifications")
-                    .where("user_id", "==", user_id)
-                    .where("type", "==", "no_tasks_reminder")
-                    .get()
-                )
-                if any(d.to_dict().get("created_at", "")[:10] == today for d in existing):
-                    continue
-
-                # Check if any planned tasks exist for today
+                # ── Fetch today's tasks once ──────────────────────────────
                 tasks_today = (
                     db.collection("tasks")
                     .where("user_id", "==", user_id)
                     .where("date", "==", today)
                     .where("type", "==", "planned")
-                    .limit(1)
                     .get()
                 )
+
                 if not tasks_today:
-                    notify_no_tasks_created(user_id)
+                    # Check 1: no tasks at all
+                    already = (
+                        db.collection("notifications")
+                        .where("user_id", "==", user_id)
+                        .where("type", "==", "no_tasks_reminder")
+                        .get()
+                    )
+                    if not any(d.to_dict().get("created_at", "")[:10] == today for d in already):
+                        notify_no_tasks_created(user_id)
+                else:
+                    # Check 2: tasks exist but plan is not locked yet
+                    plan_docs = (
+                        db.collection("daily_plans")
+                        .where("user_id", "==", user_id)
+                        .where("date", "==", today)
+                        .limit(1)
+                        .get()
+                    )
+                    plan_locked = plan_docs and plan_docs[0].to_dict().get("locked", False)
+                    if not plan_locked:
+                        already = (
+                            db.collection("notifications")
+                            .where("user_id", "==", user_id)
+                            .where("type", "==", "plan_not_locked")
+                            .get()
+                        )
+                        if not any(d.to_dict().get("created_at", "")[:10] == today for d in already):
+                            notify_no_plan_locked(user_id, len(tasks_today))
 
             except Exception as e:
                 logger.warning(f"[Scheduler] Morning reminder failed for user {user_doc.id}: {e}")
@@ -289,6 +311,99 @@ def evening_reminder_job():
     logger.info("[Scheduler] Evening reminder job complete.")
 
 
+def battle_check_job():
+    """
+    Runs every hour.
+    For every active clan battle, compares average XP of both clans.
+    Notifies each member of the losing clan once per battle per day.
+    Deduplication key: type='clan_losing', metadata.battle_id, date today.
+    """
+    logger.info("[Scheduler] Battle check job started.")
+    try:
+        from app.firebase import get_db
+        from app.services.notification_service import notify_clan_losing
+        from datetime import datetime, timezone
+
+        db  = get_db()
+        now = datetime.now(timezone.utc)
+        today_str = now.strftime("%Y-%m-%d")
+
+        active_battles = (
+            db.collection("clan_battles")
+            .where("status", "==", "active")
+            .get()
+        )
+
+        for battle_doc in active_battles:
+            try:
+                bd         = battle_doc.to_dict()
+                battle_id  = battle_doc.id
+                clan_a_id  = bd.get("clan_a_id")
+                clan_b_id  = bd.get("clan_b_id")
+
+                def _avg_xp(clan_id):
+                    c = db.collection("clans").document(clan_id).get()
+                    if not c.exists:
+                        return 0, []
+                    data    = c.to_dict()
+                    members = data.get("member_ids", [])
+                    if not members:
+                        return 0, members
+                    total = sum(
+                        (db.collection("users").document(uid).get().to_dict() or {}).get("total_xp", 0)
+                        for uid in members
+                    )
+                    return total / len(members), members, data.get("name", "Rival Clan")
+
+                result_a = _avg_xp(clan_a_id)
+                result_b = _avg_xp(clan_b_id)
+                avg_a, members_a, name_a = result_a if len(result_a) == 3 else (result_a[0], result_a[1], "Rival Clan")
+                avg_b, members_b, name_b = result_b if len(result_b) == 3 else (result_b[0], result_b[1], "Rival Clan")
+
+                # Determine which clan is losing
+                if avg_a >= avg_b:
+                    losing_members = members_b
+                    rival_name     = name_a
+                    our_avg        = avg_b
+                    their_avg      = avg_a
+                else:
+                    losing_members = members_a
+                    rival_name     = name_b
+                    our_avg        = avg_a
+                    their_avg      = avg_b
+
+                # Only notify if there's a meaningful gap (at least 1 XP)
+                if their_avg - our_avg < 1:
+                    continue
+
+                for uid in losing_members:
+                    try:
+                        # Dedup: one clan_losing notification per battle per day
+                        existing = (
+                            db.collection("notifications")
+                            .where("user_id", "==", uid)
+                            .where("type", "==", "clan_losing")
+                            .get()
+                        )
+                        already_notified = any(
+                            d.to_dict().get("created_at", "")[:10] == today_str and
+                            (d.to_dict().get("metadata") or {}).get("battle_id") == battle_id
+                            for d in existing
+                        )
+                        if not already_notified:
+                            notify_clan_losing(uid, rival_name, our_avg, their_avg, battle_id=battle_id)
+                    except Exception as e:
+                        logger.warning(f"[Scheduler] Battle check notify failed for user {uid}: {e}")
+
+            except Exception as e:
+                logger.warning(f"[Scheduler] Battle check failed for battle {battle_doc.id}: {e}")
+
+    except Exception as e:
+        logger.error(f"[Scheduler] Battle check job error: {e}")
+
+    logger.info("[Scheduler] Battle check job complete.")
+
+
 def start_scheduler(app):
     scheduler = BackgroundScheduler(timezone="UTC")
     scheduler.add_job(
@@ -303,7 +418,7 @@ def start_scheduler(app):
         func=morning_reminder_job,
         trigger=CronTrigger(hour=8, minute=0, second=0, timezone="UTC"),
         id="morning_reminder_job",
-        name="Morning task reminder",
+        name="Morning task + lock reminder",
         replace_existing=True,
         misfire_grace_time=300,
     )
@@ -315,8 +430,16 @@ def start_scheduler(app):
         replace_existing=True,
         misfire_grace_time=300,
     )
+    scheduler.add_job(
+        func=battle_check_job,
+        trigger=CronTrigger(minute=0, second=0, timezone="UTC"),  # every hour
+        id="battle_check_job",
+        name="Hourly clan battle loss check",
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
     scheduler.start()
-    logger.info("[Scheduler] APScheduler started. Jobs: midnight(00:00), morning(08:00), evening(20:00) UTC.")
+    logger.info("[Scheduler] APScheduler started. Jobs: midnight(00:00), morning(08:00), evening(20:00), battle-check(hourly) UTC.")
 
     import atexit
     atexit.register(lambda: scheduler.shutdown(wait=False))

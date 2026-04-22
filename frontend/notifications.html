@@ -154,10 +154,13 @@
           battle_challenge:        "swords",
           overtaken:               "trending-down",
           clan_behind:             "alert-triangle",
+          clan_losing:             "shield-alert",
           daily_summary:           "sun",
           peer_activity:           "activity",
           no_tasks_reminder:       "clipboard-list",
+          plan_not_locked:         "lock-open",
           tasks_pending_reminder:  "clock",
+          reached_top:             "trophy",
         }[n.type] || "bell";
 
         const typeColor = {
@@ -165,10 +168,13 @@
           battle_challenge:        "var(--danger)",
           overtaken:               "var(--warning)",
           clan_behind:             "var(--danger)",
+          clan_losing:             "var(--danger)",
           daily_summary:           "var(--gold)",
           peer_activity:           "var(--success)",
           no_tasks_reminder:       "var(--warning)",
+          plan_not_locked:         "var(--warning)",
           tasks_pending_reminder:  "var(--accent-light)",
+          reached_top:             "var(--gold)",
         }[n.type] || "var(--text-muted)";
 
         let actions = "";

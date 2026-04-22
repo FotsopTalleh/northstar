@@ -39,6 +39,13 @@ def _append_xp_log(db, user_id: str, task_id: str, xp_delta: int, reason: str, i
     return log_id
 
 
+def _snapshot_daily_ranks() -> dict:
+    """Return {user_id: rank} for the current daily leaderboard. Lightweight — one Firestore read."""
+    from app.services.leaderboard_service import get_leaderboard
+    entries = get_leaderboard("daily")
+    return {e["user_id"]: e["rank"] for e in entries}
+
+
 def award_provisional_xp(user_id: str, task_id: str, task_type: str) -> dict:
     """
     Award provisional XP when a task is completed.
@@ -52,6 +59,14 @@ def award_provisional_xp(user_id: str, task_id: str, task_type: str) -> dict:
     xp_delta = PLANNED_COMPLETE_XP if task_type == "planned" else UNPLANNED_COMPLETE_XP
     reason = f"{'Planned' if task_type == 'planned' else 'Unplanned'} task completed (provisional)"
 
+    # ── Snapshot ranks BEFORE the update ─────────────────────────────────────
+    try:
+        ranks_before = _snapshot_daily_ranks()
+        my_rank_before = ranks_before.get(user_id, 9999)
+    except Exception:
+        ranks_before = {}
+        my_rank_before = 9999
+
     # Append log
     _append_xp_log(db, user_id, task_id, xp_delta, reason, is_provisional=True)
 
@@ -63,6 +78,29 @@ def award_provisional_xp(user_id: str, task_id: str, task_type: str) -> dict:
 
     # Update leaderboards provisionally
     update_all_leaderboards(user_id, xp_delta, user_data.get("username", ""), user_data.get("avatar_color", "#6C63FF"))
+
+    # ── Rank-change notifications ─────────────────────────────────────────────
+    try:
+        from app.services.notification_service import notify_overtaken, notify_reached_top
+        ranks_after  = _snapshot_daily_ranks()
+        my_rank_after = ranks_after.get(user_id, 9999)
+
+        if my_rank_after < my_rank_before:
+            my_username = user_data.get("username", "Someone")
+
+            # Notify every user whose old rank sat between my new and old rank —
+            # those are exactly the people I leapfrogged.
+            for uid, old_rank in ranks_before.items():
+                if uid == user_id:
+                    continue
+                if my_rank_after <= old_rank < my_rank_before:
+                    notify_overtaken(uid, my_username)
+
+            # Celebrate reaching #1 on the daily board
+            if my_rank_after == 1 and my_rank_before != 1:
+                notify_reached_top(user_id, "daily")
+    except Exception:
+        pass  # Never let notification errors break XP award
 
     return {"xp_delta": xp_delta, "new_total": new_total}
 
