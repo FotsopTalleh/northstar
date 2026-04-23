@@ -15,6 +15,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadProfile();
 
+  // Auto-subscribe to push if the user already has notifications enabled
+  const autoToggle = document.getElementById("notif-enabled-toggle");
+  if (autoToggle && autoToggle.checked) {
+    subscribeToPush().catch(err => console.warn("Auto-push subscribe failed:", err));
+  }
+
   // Edit form
   document.getElementById("form-edit-profile")?.addEventListener("submit", async (e) => {
     e.preventDefault();

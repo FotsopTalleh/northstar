@@ -8,7 +8,7 @@
  *  - Background Sync: Replay queued mutations when back online
  */
 
-const CACHE_NAME = "xpforge-v4";
+const CACHE_NAME = "xpforge-v5";
 const OFFLINE_CACHE = "xpforge-offline-pages";
 
 const STATIC_ASSETS = [
@@ -219,8 +219,7 @@ self.addEventListener("push", (event) => {
   const title = data.title || "XPForge";
   const options = {
     body: data.body || "New notification",
-    icon: data.icon || "/icons/icon-192x192.png",
-    badge: "/icons/badge-72x72.png",
+    icon: data.icon || "https://api.iconify.design/lucide/zap.svg?color=%236c63ff&width=192&height=192",
     data: {
       url: data.url || "/notifications.html"
     },

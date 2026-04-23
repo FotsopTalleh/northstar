@@ -23,34 +23,48 @@ def create_notification(user_id: str, notif_type: str, message: str, metadata: d
     try:
         from app.services.push_service import send_web_push
         import threading
-        
-        # Map notification types to titles
+
         titles = {
-            "clan_invite": "New Clan Invite",
-            "battle_challenge": "Battle Challenge",
-            "overtaken": "Leaderboard Alert",
-            "clan_behind": "Clan Battle Alert",
-            "clan_losing": "Clan Battle Warning",
-            "daily_summary": "Daily Summary",
-            "peer_activity": "Friend Activity",
-            "no_tasks_reminder": "Morning Reminder",
-            "plan_not_locked": "Plan Reminder",
-            "tasks_pending_reminder": "Evening Reminder",
-            "reached_top": "Achievement Unlocked"
+            "clan_invite":             "New Clan Invite",
+            "battle_challenge":        "Battle Challenge",
+            "overtaken":               "Leaderboard Alert",
+            "clan_behind":             "Clan Battle Alert",
+            "clan_losing":             "Clan Battle Warning",
+            "daily_summary":           "Daily Summary",
+            "peer_activity":           "Friend Activity",
+            "no_tasks_reminder":       "Morning Reminder",
+            "plan_not_locked":         "Plan Reminder",
+            "tasks_pending_reminder":  "Evening Reminder",
+            "reached_top":             "Achievement Unlocked",
         }
         title = titles.get(notif_type, "XPForge Notification")
-        
-        # Run in thread so it doesn't block the API response
-        threading.Thread(
-            target=send_web_push,
-            args=(user_id, title, message),
-            daemon=True
-        ).start()
+
+        # Capture Flask app object so the thread can push an app context
+        try:
+            from flask import current_app
+            app = current_app._get_current_object()
+        except RuntimeError:
+            app = None  # Called from scheduler — no request context
+
+        def _push_with_context():
+            try:
+                if app is not None:
+                    with app.app_context():
+                        send_web_push(user_id, title, message)
+                else:
+                    send_web_push(user_id, title, message)
+            except Exception as _e:
+                import logging as _log
+                _log.getLogger(__name__).error(f"Push thread error: {_e}")
+
+        threading.Thread(target=_push_with_context, daemon=True).start()
+
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Error triggering push notification: {e}")
 
     return notif_id
+
 
 
 def notify_overtaken(overtaken_user_id: str, overtaker_username: str):
