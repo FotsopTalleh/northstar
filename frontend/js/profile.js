@@ -13,9 +13,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   await initNotifications();
   document.getElementById("btn-logout")?.addEventListener("click", () => { clearToken(); window.location.href = "/"; });
 
+  // Load profile first so the toggle reflects the real server value
   await loadProfile();
 
-  // Auto-subscribe to push if the user already has notifications enabled
+  // Update the browser permission status badge in the notification settings card
+  updateNotifPermissionStatus();
+
+  // Auto-subscribe to push AFTER loadProfile has set the toggle to the correct state
   const autoToggle = document.getElementById("notif-enabled-toggle");
   if (autoToggle && autoToggle.checked) {
     subscribeToPush().catch(err => console.warn("Auto-push subscribe failed:", err));
@@ -30,7 +34,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const body  = {};
     if (tz) body.timezone = tz;
     if (color) body.avatar_color = color;
-    
+
     setButtonLoading(btn, true);
     try {
       await apiFetch("/api/users/me", "PATCH", body);
@@ -55,14 +59,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     toggle.addEventListener("change", async () => {
       const enabled = toggle.checked;
       const label = document.getElementById("notif-toggle-label");
-      if (label) {
-        label.textContent = enabled ? "Notifications On" : "Notifications Off";
-      }
+      if (label) label.textContent = enabled ? "Notifications On" : "Notifications Off";
       try {
         await apiFetch("/api/users/me", "PATCH", { notifications_enabled: enabled });
         if (enabled) {
-          // If user enables notifications, try to subscribe to Push
-          await subscribeToPush();
+          const granted = await subscribeToPush();
+          if (!granted) {
+            // Browser blocked permission — revert toggle
+            toggle.checked = false;
+            if (label) label.textContent = "Notifications Off";
+            await apiFetch("/api/users/me", "PATCH", { notifications_enabled: false });
+            showToast("Notifications blocked by browser. Allow them in your browser settings.", "error");
+            return;
+          }
         }
         showToast(enabled ? "Notifications enabled" : "Notifications disabled", "success");
       } catch (err) {
@@ -74,58 +83,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   }
 });
-
-// Helper to convert VAPID key
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
-async function subscribeToPush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    console.warn("Push messaging is not supported");
-    return;
-  }
-
-  try {
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      console.warn("Push permission denied");
-      return;
-    }
-
-    const registration = await navigator.serviceWorker.ready;
-    let subscription = await registration.pushManager.getSubscription();
-    
-    if (!subscription) {
-      // Get VAPID public key from backend
-      const res = await apiFetch("/api/users/vapid-key");
-      if (!res.vapid_public_key) throw new Error("No VAPID key");
-      
-      const applicationServerKey = urlBase64ToUint8Array(res.vapid_public_key);
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: applicationServerKey
-      });
-    }
-
-    // Send subscription to backend
-    await apiFetch("/api/users/me/push-subscription", "POST", subscription);
-    console.log("Successfully subscribed to push notifications");
-  } catch (err) {
-    console.error("Failed to subscribe to push notifications:", err);
-  }
-}
 
 
 
@@ -206,13 +163,46 @@ function setProfileEl(id, val) {
 }
 function esc(str) { return String(str||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
-async function fireTest(type) {
-  try {
-    await apiFetch("/api/notifications/test", "POST", { type });
-    showToast("Test notification sent — check your bell!", "success");
-    // Refresh bell badge immediately
-    if (typeof fetchNotifications === "function") await fetchNotifications();
-  } catch (err) {
-    showToast(err.message, "error");
+/**
+ * Reflect the real browser notification permission state in the
+ * Notification Settings card so users know why they may not be
+ * receiving push notifications.
+ */
+function updateNotifPermissionStatus() {
+  const statusEl = document.getElementById("notif-permission-status");
+  const enableWrap = document.getElementById("notif-enable-btn-wrap");
+  const toggle = document.getElementById("notif-enabled-toggle");
+  if (!statusEl) return;
+
+  const perm = ("Notification" in window) ? Notification.permission : "unsupported";
+
+  if (perm === "granted") {
+    statusEl.style.display = "flex";
+    statusEl.style.background = "rgba(46,213,115,0.12)";
+    statusEl.style.color = "var(--success)";
+    statusEl.innerHTML = '<i data-lucide="check-circle" style="width:14px;height:14px;margin-right:6px;flex-shrink:0"></i>Browser notifications are active.';
+    if (enableWrap) enableWrap.style.display = "none";
+  } else if (perm === "denied") {
+    statusEl.style.display = "flex";
+    statusEl.style.background = "rgba(255,71,87,0.12)";
+    statusEl.style.color = "var(--danger)";
+    statusEl.innerHTML = '<i data-lucide="alert-circle" style="width:14px;height:14px;margin-right:6px;flex-shrink:0"></i>Blocked by browser. Allow notifications in your browser site settings.';
+    if (toggle) { toggle.checked = false; }
+    if (enableWrap) enableWrap.style.display = "none";
+  } else if (perm === "default") {
+    statusEl.style.display = "flex";
+    statusEl.style.background = "rgba(255,165,0,0.12)";
+    statusEl.style.color = "var(--warning)";
+    statusEl.innerHTML = '<i data-lucide="bell-off" style="width:14px;height:14px;margin-right:6px;flex-shrink:0"></i>Permission not granted yet.';
+    if (enableWrap) enableWrap.style.display = "block";
+  } else {
+    statusEl.style.display = "flex";
+    statusEl.style.background = "rgba(108,99,255,0.1)";
+    statusEl.style.color = "var(--text-muted)";
+    statusEl.innerHTML = '<i data-lucide="info" style="width:14px;height:14px;margin-right:6px;flex-shrink:0"></i>Push notifications not supported on this browser.';
+    if (toggle) { toggle.checked = false; }
+    if (enableWrap) enableWrap.style.display = "none";
   }
+
+  if (window.lucide) window.lucide.createIcons({ root: statusEl });
 }

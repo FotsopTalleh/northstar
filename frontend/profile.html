@@ -25,10 +25,6 @@
     .toggle-track::after{content:'';position:absolute;top:3px;left:3px;width:19px;height:19px;background:#fff;border-radius:50%;transition:transform .22s;box-shadow:0 1px 4px rgba(0,0,0,.25)}
     .toggle-switch input:checked+.toggle-track{background:var(--accent)}
     .toggle-switch input:checked+.toggle-track::after{transform:translateX(21px)}
-    .test-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}
-    .test-btn{display:flex;align-items:center;gap:7px;padding:8px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:10px;color:var(--text-secondary);font-size:.77rem;font-weight:500;cursor:pointer;transition:border-color .18s,background .18s;width:100%;text-align:left}
-    .test-btn:hover{border-color:var(--accent);background:rgba(108,99,255,.07);color:var(--text-primary)}
-    .test-btn i{flex-shrink:0}
   </style>
 </head>
 <body>
@@ -147,6 +143,10 @@
           </div>
           <div class="card-body-custom">
 
+            <!-- Browser permission status badge -->
+            <div id="notif-permission-status"
+                 style="display:none;align-items:center;font-size:.8rem;padding:8px 12px;border-radius:8px;margin-bottom:12px"></div>
+
             <!-- Toggle -->
             <div class="notif-toggle-wrap">
               <div class="notif-toggle-label">
@@ -159,35 +159,14 @@
               </label>
             </div>
 
-            <!-- Test buttons -->
-            <div style="margin-top:16px">
-              <div style="font-size:.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Fire a test notification</div>
-              <div class="test-grid">
-                <button class="test-btn" onclick="fireTest('no_tasks_reminder')">
-                  <i data-lucide="clipboard-list" style="width:14px;height:14px;color:var(--warning)"></i>No tasks yet
-                </button>
-                <button class="test-btn" onclick="fireTest('plan_not_locked')">
-                  <i data-lucide="lock-open" style="width:14px;height:14px;color:var(--warning)"></i>Plan unlocked
-                </button>
-                <button class="test-btn" onclick="fireTest('tasks_pending_reminder')">
-                  <i data-lucide="clock" style="width:14px;height:14px;color:var(--accent-light)"></i>Pending tasks
-                </button>
-                <button class="test-btn" onclick="fireTest('clan_losing')">
-                  <i data-lucide="shield-alert" style="width:14px;height:14px;color:var(--danger)"></i>Clan losing
-                </button>
-                <button class="test-btn" onclick="fireTest('overtaken')">
-                  <i data-lucide="trending-down" style="width:14px;height:14px;color:var(--warning)"></i>Overtaken
-                </button>
-                <button class="test-btn" onclick="fireTest('reached_top')">
-                  <i data-lucide="trophy" style="width:14px;height:14px;color:var(--gold)"></i>Reached #1
-                </button>
-                <button class="test-btn" onclick="fireTest('battle_challenge')">
-                  <i data-lucide="swords" style="width:14px;height:14px;color:var(--danger)"></i>Battle challenge
-                </button>
-                <button class="test-btn" onclick="fireTest('daily_summary')">
-                  <i data-lucide="sun" style="width:14px;height:14px;color:var(--gold)"></i>Daily summary
-                </button>
-              </div>
+            <!-- Shown only when browser permission is 'default' (not yet asked) -->
+            <div id="notif-enable-btn-wrap" style="display:none;margin-top:12px">
+              <button id="notif-request-btn" class="btn btn-primary-custom w-100"
+                      style="font-size:.85rem;display:flex;align-items:center;justify-content:center;gap:6px"
+                      onclick="subscribeToPush().then(ok => { if(ok) updateNotifPermissionStatus(); })">
+                <i data-lucide="bell" style="width:15px;height:15px"></i>
+                Enable Browser Notifications
+              </button>
             </div>
 
           </div>

@@ -36,11 +36,17 @@ if ("serviceWorker" in navigator) {
         navigator.serviceWorker.addEventListener("message", (e) => {
           if (e.data?.type === "SYNC_COMPLETE") {
             showToast("🔄 Offline actions synced!", "success");
-            // Reload dashboard data if on that page
             if (typeof loadDashboard === "function") loadDashboard();
             if (typeof fetchNotifications === "function") fetchNotifications();
           }
         });
+
+        // Auto-renew push subscription on every page load if the user
+        // is logged in and has already granted browser permission.
+        // This keeps the subscription fresh after VAPID key rotations.
+        if (getToken() && Notification.permission === "granted") {
+          subscribeToPush().catch(() => {});
+        }
       })
       .catch(err => console.warn("SW registration failed:", err));
   });
@@ -188,3 +194,75 @@ function setButtonLoading(btn, isLoading, originalHtml = "") {
   }
 }
 
+
+// ── Push Subscription (shared across all pages) ──────────────────────────────
+
+/**
+ * Convert a URL-safe Base64 VAPID public key to a Uint8Array
+ * required by PushManager.subscribe().
+ */
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const output = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
+  return output;
+}
+
+/**
+ * Subscribe (or re-subscribe) the current user to Web Push.
+ * Returns true on success, false if permission denied or unsupported.
+ * Safe to call multiple times — detects VAPID key mismatches and re-subscribes.
+ */
+async function subscribeToPush() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    console.warn("[Push] Not supported on this browser.");
+    return false;
+  }
+  if (!getToken()) return false; // Must be logged in
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.warn("[Push] Permission not granted:", permission);
+      return false;
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+
+    // Fetch current VAPID public key from server
+    const res = await apiFetch("/api/users/vapid-key");
+    if (!res || !res.vapid_public_key) throw new Error("Could not retrieve VAPID key.");
+    const applicationServerKey = urlBase64ToUint8Array(res.vapid_public_key);
+
+    if (subscription) {
+      // Detect VAPID key mismatch — unsubscribe and re-subscribe with new key
+      const existingKey = subscription.options?.applicationServerKey
+        ? btoa(String.fromCharCode(...new Uint8Array(subscription.options.applicationServerKey)))
+        : null;
+      const newKeyBase64 = res.vapid_public_key.replace(/-/g, "+").replace(/_/g, "/");
+      if (existingKey && existingKey !== newKeyBase64) {
+        console.info("[Push] VAPID key mismatch — re-subscribing.");
+        await subscription.unsubscribe();
+        subscription = null;
+      }
+    }
+
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey,
+      });
+    }
+
+    // toJSON() gives { endpoint, keys } — safe to send
+    await apiFetch("/api/users/me/push-subscription", "POST", subscription.toJSON());
+    console.log("[Push] Subscription active.");
+    return true;
+  } catch (err) {
+    console.error("[Push] Failed to subscribe:", err);
+    return false;
+  }
+}
