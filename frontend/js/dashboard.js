@@ -178,10 +178,10 @@ function renderTaskItem(task) {
   const canComplete = task.type === "unplanned" || (task.type === "planned" && isLocked);
 
   const actions = isPending ? `
-    <div class="d-flex gap-2 flex-wrap">
-      ${canComplete ? `<button class="btn btn-success-custom" style="padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:4px" onclick="completeTask('${task.task_id}')"><i data-lucide="check" style="width:14px;height:14px"></i> Done</button>` : `<span style="font-size:.75rem;color:var(--text-muted);display:flex;align-items:center;gap:4px"><i data-lucide="lock" style="width:13px;height:13px"></i> Lock plan to complete</span>`}
-      ${task.type === "planned" && isLocked ? `<button class="btn btn-danger-custom" style="padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:4px" onclick="failTask('${task.task_id}')"><i data-lucide="x" style="width:14px;height:14px"></i> Fail</button>` : ""}
-      ${task.type === "planned" && isLocked ? `<button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:4px;color:var(--warning);border-color:var(--warning)" onclick="carryOverTask('${task.task_id}')"><i data-lucide="calendar-clock" style="width:14px;height:14px"></i> Carry (−2 XP)</button>` : ""}
+    <div class="d-flex gap-2 flex-wrap" id="task-actions-${task.task_id}">
+      ${canComplete ? `<button class="btn btn-success-custom task-action-btn" style="padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:4px" onclick="completeTask('${task.task_id}', this)"><i data-lucide="check" style="width:14px;height:14px"></i> Done</button>` : `<span style="font-size:.75rem;color:var(--text-muted);display:flex;align-items:center;gap:4px"><i data-lucide="lock" style="width:13px;height:13px"></i> Lock plan to complete</span>`}
+      ${task.type === "planned" && isLocked ? `<button class="btn btn-danger-custom task-action-btn" style="padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:4px" onclick="failTask('${task.task_id}', this)"><i data-lucide="x" style="width:14px;height:14px"></i> Fail</button>` : ""}
+      ${task.type === "planned" && isLocked ? `<button class="btn btn-ghost task-action-btn" style="padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:4px;color:var(--warning);border-color:var(--warning)" onclick="carryOverTask('${task.task_id}', this)"><i data-lucide="calendar-clock" style="width:14px;height:14px"></i> Carry (−2 XP)</button>` : ""}
     </div>
   ` : (isCarried ? `<span style="font-size:.75rem;color:var(--warning);display:flex;align-items:center;gap:4px"><i data-lucide="calendar-clock" style="width:13px;height:13px"></i> Moved to tomorrow</span>` : "");
 
@@ -212,7 +212,42 @@ async function addTask(title, type) {
   }
 }
 
-async function completeTask(taskId) {
+// ── Task row lock helpers ────────────────────────────────────────────────────
+/**
+ * Freeze every action button in the task row and show a spinner on the
+ * one the user actually pressed. Returns a restore function.
+ */
+function _lockTaskRow(taskId, pressedBtn) {
+  const row = document.getElementById(`task-actions-${taskId}`);
+  const taskItem = document.getElementById(`task-${taskId}`);
+  const buttons = row ? row.querySelectorAll("button") : [];
+
+  // Dim & lock all sibling buttons
+  buttons.forEach(b => {
+    b.disabled = true;
+    b.style.opacity = "0.45";
+    b.style.pointerEvents = "none";
+  });
+
+  // Pulse the whole task row
+  if (taskItem) taskItem.classList.add("row-loading");
+
+  // Show spinner only on the pressed button
+  setButtonLoading(pressedBtn, true);
+
+  return function restore() {
+    buttons.forEach(b => {
+      b.disabled = false;
+      b.style.opacity = "";
+      b.style.pointerEvents = "";
+    });
+    if (taskItem) taskItem.classList.remove("row-loading");
+    setButtonLoading(pressedBtn, false);
+  };
+}
+
+async function completeTask(taskId, btn) {
+  const restore = _lockTaskRow(taskId, btn);
   try {
     const result = await apiFetch(`/api/tasks/${taskId}/complete`, "PATCH");
     // Update local state
@@ -233,11 +268,13 @@ async function completeTask(taskId) {
     const xpEl = document.getElementById("stat-xp");
     if (xpEl) { xpEl.classList.remove("xp-pop"); void xpEl.offsetWidth; xpEl.classList.add("xp-pop"); }
   } catch (err) {
+    restore();
     showToast(err.message, "error");
   }
 }
 
-async function failTask(taskId) {
+async function failTask(taskId, btn) {
+  const restore = _lockTaskRow(taskId, btn);
   try {
     const result = await apiFetch(`/api/tasks/${taskId}/fail`, "PATCH");
     const idx = _tasks.findIndex(t => t.task_id === taskId);
@@ -250,6 +287,7 @@ async function failTask(taskId) {
     renderAll();
     showToast(`${result.xp_delta} XP deducted`, "error");
   } catch (err) {
+    restore();
     showToast(err.message, "error");
   }
 }
@@ -279,9 +317,10 @@ async function scheduleTomorrow(title) {
   }
 }
 
-async function carryOverTask(taskId) {
+async function carryOverTask(taskId, btn) {
   const confirmed = confirm("Carry this task to tomorrow? This costs −2 XP.");
   if (!confirmed) return;
+  const restore = _lockTaskRow(taskId, btn);
   try {
     const result = await apiFetch(`/api/tasks/${taskId}/carry-over`, "POST");
     // Update local state
@@ -299,6 +338,7 @@ async function carryOverTask(taskId) {
     renderAll();
     showToast(`Task moved to ${result.scheduled_for} (${result.xp_delta} XP)`, "error");
   } catch (err) {
+    restore();
     showToast(err.message, "error");
   }
 }
