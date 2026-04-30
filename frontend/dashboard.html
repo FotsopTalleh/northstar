@@ -71,9 +71,14 @@
         <div class="stat-sub">completed</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Unplanned</div>
-        <div class="stat-value" id="stat-unplanned">—</div>
-        <div class="stat-sub">bonus tasks</div>
+        <div class="stat-label">Carried Over</div>
+        <div class="stat-value" id="stat-carried" style="color:var(--warning)">—</div>
+        <div class="stat-sub">moved to tomorrow</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tomorrow Queue</div>
+        <div class="stat-value" id="stat-tomorrow" style="color:var(--accent-light)">—</div>
+        <div class="stat-sub">tasks lined up</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Total XP</div>
@@ -156,6 +161,23 @@
                 <button type="submit" class="btn btn-primary-custom" style="white-space:nowrap;font-size:.85rem">+ Plan</button>
               </form>
               <div id="tomorrow-count-msg" style="font-size:.76rem;color:var(--text-muted);margin-top:8px"></div>
+            </div>
+          </div>
+
+          <!-- Tomorrow's Queue -->
+          <div class="card mt-3" id="section-tomorrow-queue" style="border-color:rgba(108,99,255,0.3)">
+            <div class="card-header-custom" style="background:rgba(108,99,255,0.06)">
+              <i data-lucide="calendar-clock" style="width:20px;height:20px;color:var(--warning)"></i>
+              <div>
+                <div style="font-weight:700;font-size:.9rem">Tomorrow's Queue</div>
+                <div style="font-size:.78rem;color:var(--text-muted)">Carry-overs &amp; pre-scheduled tasks</div>
+              </div>
+              <span id="tomorrow-queue-badge" class="xp-chip provisional" style="margin-left:auto;display:none">0</span>
+            </div>
+            <div class="card-body-custom" style="padding-top:12px">
+              <div id="list-tomorrow" style="display:flex;flex-direction:column;gap:8px">
+                <div class="skeleton" style="height:48px;border-radius:10px"></div>
+              </div>
             </div>
           </div>
 

@@ -4,6 +4,7 @@
 
 let _plan = null;
 let _tasks = [];
+let _tomorrowTasks = [];
 let _pendingXP = 0;
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -84,10 +85,14 @@ async function loadDashboard() {
   try {
     // Ensure a plan exists for today
     await apiFetch("/api/plans/create", "POST");
-    const data = await apiFetch("/api/plans/today");
+    const [data, tmrData] = await Promise.all([
+      apiFetch("/api/plans/today"),
+      apiFetch("/api/plans/tomorrow"),
+    ]);
     if (!data) return;
     _plan = data.plan;
     _tasks = data.tasks || [];
+    _tomorrowTasks = tmrData?.tasks || [];
     renderAll();
   } catch (err) {
     showToast("Failed to load dashboard: " + err.message, "error");
@@ -100,6 +105,7 @@ function renderAll() {
   renderPlanStatus();
   renderTaskList("planned");
   renderTaskList("unplanned");
+  renderTomorrowList();
 }
 
 function renderDateHeader() {
@@ -109,14 +115,14 @@ function renderDateHeader() {
 
 function renderStatsStrip() {
   const planned   = _tasks.filter(t => t.type === "planned");
-  const unplanned = _tasks.filter(t => t.type === "unplanned");
   const done      = _tasks.filter(t => t.status === "completed");
-  const failed    = _tasks.filter(t => t.status === "failed");
+  const carried   = _tasks.filter(t => t.status === "carried_over");
   const user      = getUser();
 
   setEl("stat-total",    `${done.length}/${_tasks.length}`);
   setEl("stat-planned",  `${planned.filter(t=>t.status==="completed").length}/${planned.length}`);
-  setEl("stat-unplanned",`${unplanned.filter(t=>t.status==="completed").length}/${unplanned.length}`);
+  setEl("stat-carried",  carried.length);
+  setEl("stat-tomorrow", _tomorrowTasks.length);
   setEl("stat-xp",       user ? user.total_xp : 0);
 }
 
@@ -311,6 +317,11 @@ async function scheduleTomorrow(title) {
     const result = await apiFetch("/api/tasks/schedule-tomorrow", "POST", { title });
     const msg = document.getElementById("tomorrow-count-msg");
     if (msg) msg.textContent = `✓ "${result.title}" scheduled for ${result.scheduled_for}`;
+    // Refresh tomorrow's task list
+    const tmrData = await apiFetch("/api/plans/tomorrow");
+    _tomorrowTasks = tmrData?.tasks || [];
+    renderTomorrowList();
+    renderStatsStrip();
     showToast(`Task scheduled for tomorrow!`, "success");
   } catch (err) {
     showToast(err.message, "error");
@@ -335,10 +346,55 @@ async function carryOverTask(taskId, btn) {
       user.total_xp = result.new_total_xp;
       setUser(user);
     }
+    // Refresh tomorrow list
+    const tmrData = await apiFetch("/api/plans/tomorrow");
+    _tomorrowTasks = tmrData?.tasks || [];
     renderAll();
     showToast(`Task moved to ${result.scheduled_for} (${result.xp_delta} XP)`, "error");
   } catch (err) {
     restore();
     showToast(err.message, "error");
   }
+}
+
+// ── Tomorrow's Queue renderer ────────────────────────────────────────────────
+function renderTomorrowList() {
+  const listEl = document.getElementById("list-tomorrow");
+  const badge  = document.getElementById("tomorrow-queue-badge");
+  if (!listEl) return;
+
+  const count = _tomorrowTasks.length;
+
+  // Update badge
+  if (badge) {
+    badge.textContent = `${count} task${count !== 1 ? "s" : ""}`;
+    badge.style.display = count > 0 ? "inline-flex" : "none";
+  }
+
+  if (!count) {
+    listEl.innerHTML = `
+      <div class="empty-state" style="padding:18px">
+        <i data-lucide="calendar-check" style="width:32px;height:32px;color:var(--text-muted)"></i>
+        <p style="color:var(--text-muted);font-size:.85rem;margin-top:8px">Nothing lined up yet</p>
+      </div>`;
+    if (window.lucide) window.lucide.createIcons({ root: listEl });
+    return;
+  }
+
+  listEl.innerHTML = _tomorrowTasks.map(t => {
+    const isCarriedOver  = !!t.carried_from_task_id;
+    const isPreScheduled = !!t.scheduled_from_today;
+    const originTag = isCarriedOver
+      ? `<span style="font-size:.7rem;background:rgba(255,167,0,.15);color:var(--warning);padding:2px 7px;border-radius:20px;display:inline-flex;align-items:center;gap:3px"><i data-lucide="calendar-clock" style="width:11px;height:11px"></i> Carried over</span>`
+      : `<span style="font-size:.7rem;background:rgba(108,99,255,.15);color:var(--accent-light);padding:2px 7px;border-radius:20px;display:inline-flex;align-items:center;gap:3px"><i data-lucide="calendar-plus" style="width:11px;height:11px"></i> Scheduled</span>`;
+
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface-2);border-radius:10px;border:1px solid var(--border)">
+        <i data-lucide="clock" style="width:16px;height:16px;color:var(--text-muted);flex-shrink:0"></i>
+        <span style="flex:1;font-size:.88rem;color:var(--text-primary)">${escHtml(t.title)}</span>
+        ${originTag}
+      </div>`;
+  }).join("");
+
+  if (window.lucide) window.lucide.createIcons({ root: listEl });
 }

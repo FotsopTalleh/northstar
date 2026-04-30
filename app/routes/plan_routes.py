@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import Blueprint, request, jsonify, g
 import pytz
 from app.firebase import get_db
@@ -144,3 +144,35 @@ def today_plan():
         tasks.append(td)
 
     return jsonify({"plan": plan_data, "tasks": tasks, "date": date}), 200
+
+
+@plan_bp.route("/tomorrow", methods=["GET"])
+@require_auth
+def tomorrow_tasks():
+    """Return all tasks scheduled for tomorrow (carry-overs + schedule-tomorrow)."""
+    db = get_db()
+    user_ref = db.collection("users").document(g.user_id)
+    user = user_ref.get()
+    if not user.exists:
+        return jsonify({"error": "User not found"}), 404
+
+    tz_str = user.to_dict().get("timezone", "UTC")
+    try:
+        tz = pytz.timezone(tz_str)
+    except Exception:
+        tz = pytz.utc
+    tomorrow = (datetime.now(tz) + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    task_docs = (
+        db.collection("tasks")
+        .where("user_id", "==", g.user_id)
+        .where("date", "==", tomorrow)
+        .get()
+    )
+    tasks = []
+    for t in task_docs:
+        td = t.to_dict()
+        td["task_id"] = t.id
+        tasks.append(td)
+
+    return jsonify({"tasks": tasks, "date": tomorrow, "count": len(tasks)}), 200
