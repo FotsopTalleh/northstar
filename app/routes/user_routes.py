@@ -61,16 +61,26 @@ def save_push_subscription():
     if not data or "endpoint" not in data or "keys" not in data:
         return jsonify({"error": "Invalid subscription data"}), 400
 
+    # Only keep fields that pywebpush expects — strip expirationTime etc.
+    clean_sub = {
+        "endpoint": data["endpoint"],
+        "keys": data["keys"],
+    }
+
     db = get_db()
     user_ref = db.collection("users").document(g.user_id)
-    
-    # Read, modify, and write for simplicity.
+
     user_doc = user_ref.get()
     if user_doc.exists:
         subs = user_doc.to_dict().get("push_subscriptions", [])
-        if not any(s.get("endpoint") == data["endpoint"] for s in subs):
-            subs.append(data)
-            user_ref.update({"push_subscriptions": subs})
+        # Replace if endpoint exists (keeps keys fresh), otherwise append
+        endpoint = clean_sub["endpoint"]
+        existing_idx = next((i for i, s in enumerate(subs) if s.get("endpoint") == endpoint), None)
+        if existing_idx is not None:
+            subs[existing_idx] = clean_sub
+        else:
+            subs.append(clean_sub)
+        user_ref.update({"push_subscriptions": subs})
 
     return jsonify({"message": "Subscription saved"}), 200
 

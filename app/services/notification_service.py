@@ -39,12 +39,14 @@ def create_notification(user_id: str, notif_type: str, message: str, metadata: d
         }
         title = titles.get(notif_type, "XPForge Notification")
 
-        # Capture Flask app object so the thread can push an app context
+        # Capture Flask app object so the thread can push an app context.
+        # This works whether called from a request context OR from the scheduler
+        # (which now always runs inside app.app_context()).
         try:
             from flask import current_app
             app = current_app._get_current_object()
         except RuntimeError:
-            app = None  # Called from scheduler — no request context
+            app = None  # Should not happen now that scheduler uses app context
 
         def _push_with_context():
             try:
@@ -52,6 +54,7 @@ def create_notification(user_id: str, notif_type: str, message: str, metadata: d
                     with app.app_context():
                         send_web_push(user_id, title, message)
                 else:
+                    # Last-resort: try without context (Firebase may still work)
                     send_web_push(user_id, title, message)
             except Exception as _e:
                 import logging as _log

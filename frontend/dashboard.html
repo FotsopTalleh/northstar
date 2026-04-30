@@ -121,47 +121,70 @@
         </div>
       </div>
 
-      <!-- Unplanned Tasks Column -->
-      <div class="col-lg-5">
-        <div class="card">
-          <div class="card-header-custom">
-            <i data-lucide="zap" style="width:24px;height:24px;color:var(--text-secondary)"></i>
-            <div>
-              <div style="font-weight:700">Unplanned Tasks</div>
-              <div style="font-size:.8rem;color:var(--text-muted)">+3 XP each · max 5 per day</div>
+        <!-- Unplanned Tasks Column -->
+        <div class="col-lg-5">
+          <div class="card">
+            <div class="card-header-custom">
+              <i data-lucide="zap" style="width:24px;height:24px;color:var(--text-secondary)"></i>
+              <div>
+                <div style="font-weight:700">Unplanned Tasks</div>
+                <div style="font-size:.8rem;color:var(--text-muted)">+3 XP each · max 5 per day</div>
+              </div>
+            </div>
+            <div class="card-body-custom">
+              <form id="form-add-unplanned" class="d-flex gap-2 mb-3">
+                <input id="input-unplanned-title" type="text" class="form-control-custom" placeholder="Quick win…" style="flex:1" />
+                <button type="submit" class="btn btn-gold" style="white-space:nowrap">+ Add</button>
+              </form>
+              <div id="list-unplanned"></div>
             </div>
           </div>
-          <div class="card-body-custom">
-            <form id="form-add-unplanned" class="d-flex gap-2 mb-3">
-              <input id="input-unplanned-title" type="text" class="form-control-custom" placeholder="Quick win…" style="flex:1" />
-              <button type="submit" class="btn btn-gold" style="white-space:nowrap">+ Add</button>
-            </form>
-            <div id="list-unplanned"></div>
-          </div>
-        </div>
 
-        <!-- XP Rules info box -->
-        <div class="card mt-3" style="border-color:rgba(108,99,255,0.2)">
-          <div class="card-body-custom" style="padding:18px 20px">
-            <div class="section-title" style="font-size:.8rem">XP Rules</div>
-            <div class="d-flex flex-column gap-2" style="font-size:.85rem">
-              <div class="d-flex justify-content-between">
-                <span style="color:var(--text-secondary);display:flex;align-items:center"><i data-lucide="check-circle-2" style="width:16px;height:16px;margin-right:6px;color:var(--success)"></i> Planned complete</span>
-                <span class="xp-chip positive">+7 XP</span>
+          <!-- Schedule for Tomorrow -->
+          <div class="card mt-3" style="border-color:rgba(108,99,255,0.2)">
+            <div class="card-header-custom">
+              <i data-lucide="calendar-plus" style="width:20px;height:20px;color:var(--accent-light)"></i>
+              <div>
+                <div style="font-weight:700;font-size:.9rem">Schedule for Tomorrow</div>
+                <div style="font-size:.78rem;color:var(--text-muted)">Plan ahead — tasks appear in tomorrow's list</div>
               </div>
-              <div class="d-flex justify-content-between">
-                <span style="color:var(--text-secondary);display:flex;align-items:center"><i data-lucide="x-circle" style="width:16px;height:16px;margin-right:6px;color:var(--danger)"></i> Planned failed</span>
-                <span class="xp-chip negative">−4 XP</span>
-              </div>
-              <div class="d-flex justify-content-between">
-                <span style="color:var(--text-secondary);display:flex;align-items:center"><i data-lucide="zap" style="width:16px;height:16px;margin-right:6px;color:var(--gold)"></i> Unplanned done</span>
-                <span class="xp-chip provisional">+3 XP</span>
+            </div>
+            <div class="card-body-custom" style="padding-top:12px">
+              <form id="form-schedule-tomorrow" class="d-flex gap-2">
+                <input id="input-tomorrow-title" type="text" class="form-control-custom"
+                  placeholder="Tomorrow's task…" style="flex:1;font-size:.88rem" />
+                <button type="submit" class="btn btn-primary-custom" style="white-space:nowrap;font-size:.85rem">+ Plan</button>
+              </form>
+              <div id="tomorrow-count-msg" style="font-size:.76rem;color:var(--text-muted);margin-top:8px"></div>
+            </div>
+          </div>
+
+          <!-- XP Rules info box -->
+          <div class="card mt-3" style="border-color:rgba(108,99,255,0.2)">
+            <div class="card-body-custom" style="padding:18px 20px">
+              <div class="section-title" style="font-size:.8rem">XP Rules</div>
+              <div class="d-flex flex-column gap-2" style="font-size:.85rem">
+                <div class="d-flex justify-content-between">
+                  <span style="color:var(--text-secondary);display:flex;align-items:center"><i data-lucide="check-circle-2" style="width:16px;height:16px;margin-right:6px;color:var(--success)"></i> Planned complete</span>
+                  <span class="xp-chip positive">+7 XP</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span style="color:var(--text-secondary);display:flex;align-items:center"><i data-lucide="x-circle" style="width:16px;height:16px;margin-right:6px;color:var(--danger)"></i> Planned failed</span>
+                  <span class="xp-chip negative">−4 XP</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span style="color:var(--text-secondary);display:flex;align-items:center"><i data-lucide="zap" style="width:16px;height:16px;margin-right:6px;color:var(--gold)"></i> Unplanned done</span>
+                  <span class="xp-chip provisional">+3 XP</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span style="color:var(--text-secondary);display:flex;align-items:center"><i data-lucide="calendar-clock" style="width:16px;height:16px;margin-right:6px;color:var(--warning)"></i> Carry to tomorrow</span>
+                  <span class="xp-chip negative">−2 XP</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
   </div>
 
   <script src="/js/offline-queue.js"></script>

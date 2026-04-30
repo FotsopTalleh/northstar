@@ -10,9 +10,16 @@ from apscheduler.triggers.cron import CronTrigger
 logger = logging.getLogger(__name__)
 
 
-def midnight_job():
-    """The main nightly finalization job."""
-    logger.info("[Scheduler] Midnight job started.")
+def _make_midnight_job(app):
+    def midnight_job():
+        """The main nightly finalization job."""
+        logger.info("[Scheduler] Midnight job started.")
+        with app.app_context():
+            _run_midnight_job()
+    return midnight_job
+
+
+def _run_midnight_job():
     from app.firebase import get_db
     from app.services.xp_service import finalize_xp_for_task, PLANNED_FAIL_XP
     from app.services.leaderboard_service import get_leaderboard, get_current_period_key
@@ -167,10 +174,17 @@ def midnight_job():
 
         logger.info(f"[Scheduler] Battle {battle_doc.id} completed. Winner: {winner_id}")
 
-    logger.info("[Scheduler] Midnight job complete.")
+    logger.info("[Scheduler] Midnight job complete. (_run_midnight_job)")
 
 
-def morning_reminder_job():
+def _make_morning_job(app):
+    def morning_reminder_job():
+        with app.app_context():
+            _run_morning_reminder_job()
+    return morning_reminder_job
+
+
+def _run_morning_reminder_job():
     """
     Runs at 08:00 UTC.
     Two checks per user:
@@ -255,7 +269,14 @@ def morning_reminder_job():
     logger.info("[Scheduler] Morning reminder job complete.")
 
 
-def evening_reminder_job():
+def _make_evening_job(app):
+    def evening_reminder_job():
+        with app.app_context():
+            _run_evening_reminder_job()
+    return evening_reminder_job
+
+
+def _run_evening_reminder_job():
     """
     Runs at 20:00 UTC.
     Notifies users who have pending planned tasks for today.
@@ -319,7 +340,14 @@ def evening_reminder_job():
     logger.info("[Scheduler] Evening reminder job complete.")
 
 
-def battle_check_job():
+def _make_battle_check_job(app):
+    def battle_check_job():
+        with app.app_context():
+            _run_battle_check_job()
+    return battle_check_job
+
+
+def _run_battle_check_job():
     """
     Runs every hour.
     For every active clan battle, compares average XP of both clans.
@@ -419,7 +447,7 @@ def battle_check_job():
 def start_scheduler(app):
     scheduler = BackgroundScheduler(timezone="UTC")
     scheduler.add_job(
-        func=midnight_job,
+        func=_make_midnight_job(app),
         trigger=CronTrigger(hour=0, minute=0, second=0, timezone="UTC"),
         id="midnight_job",
         name="Midnight finalization",
@@ -427,7 +455,7 @@ def start_scheduler(app):
         misfire_grace_time=300,
     )
     scheduler.add_job(
-        func=morning_reminder_job,
+        func=_make_morning_job(app),
         trigger=CronTrigger(hour=8, minute=0, second=0, timezone="UTC"),
         id="morning_reminder_job",
         name="Morning task + lock reminder",
@@ -435,7 +463,7 @@ def start_scheduler(app):
         misfire_grace_time=300,
     )
     scheduler.add_job(
-        func=evening_reminder_job,
+        func=_make_evening_job(app),
         trigger=CronTrigger(hour=20, minute=0, second=0, timezone="UTC"),
         id="evening_reminder_job",
         name="Evening pending tasks reminder",
@@ -443,7 +471,7 @@ def start_scheduler(app):
         misfire_grace_time=300,
     )
     scheduler.add_job(
-        func=battle_check_job,
+        func=_make_battle_check_job(app),
         trigger=CronTrigger(minute=0, second=0, timezone="UTC"),  # every hour
         id="battle_check_job",
         name="Hourly clan battle loss check",

@@ -27,7 +27,7 @@ def _generate_jwt(user_id: str, email: str) -> str:
 
 
 def _send_reset_email(to_email: str, reset_token: str):
-    """Send a password reset email via Gmail SMTP."""
+    """Send a password reset email via Gmail SMTP (SSL or STARTTLS)."""
     reset_url = f"{Config.APP_URL}/reset-password.html?token={reset_token}"
 
     msg = MIMEMultipart("alternative")
@@ -59,9 +59,26 @@ def _send_reset_email(to_email: str, reset_token: str):
     """
     msg.attach(MIMEText(html, "html"))
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(Config.SMTP_EMAIL, Config.SMTP_PASSWORD)
-        server.sendmail(Config.SMTP_EMAIL, to_email, msg.as_string())
+    last_error = None
+    # Try SSL (port 465) first, then STARTTLS (port 587)
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=10) as server:
+            server.login(Config.SMTP_EMAIL, Config.SMTP_PASSWORD)
+            server.sendmail(Config.SMTP_EMAIL, to_email, msg.as_string())
+        return  # success
+    except Exception as e:
+        last_error = e
+        import logging as _log
+        _log.getLogger(__name__).warning(f"[Auth] SMTP_SSL failed, trying STARTTLS: {e}")
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(Config.SMTP_EMAIL, Config.SMTP_PASSWORD)
+            server.sendmail(Config.SMTP_EMAIL, to_email, msg.as_string())
+    except Exception as e2:
+        raise RuntimeError(f"SMTP failed (SSL: {last_error}; STARTTLS: {e2})")
 
 
 # ─── SIGNUP ─────────────────────────────────────────────────────────────────

@@ -50,6 +50,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     setButtonLoading(btn, false);
   });
 
+  // Schedule for tomorrow
+  document.getElementById("form-schedule-tomorrow")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const input = document.getElementById("input-tomorrow-title");
+    const btn   = e.target.querySelector("button[type=submit]");
+    const title = input.value.trim();
+    if (!title) return;
+    setButtonLoading(btn, true);
+    input.disabled = true;
+    await scheduleTomorrow(title);
+    input.value = "";
+    input.disabled = false;
+    setButtonLoading(btn, false);
+  });
+
   // Lock plan
   document.getElementById("btn-lock-plan")?.addEventListener("click", lockPlan);
 
@@ -141,13 +156,18 @@ function renderTaskList(type) {
 }
 
 function renderTaskItem(task) {
-  const isDone   = task.status === "completed";
-  const isFailed = task.status === "failed";
-  const isPending = task.status === "pending";
-  const isLocked = _plan?.locked;
+  const isDone      = task.status === "completed";
+  const isFailed    = task.status === "failed";
+  const isCarried   = task.status === "carried_over";
+  const isPending   = task.status === "pending";
+  const isLocked    = _plan?.locked;
 
-  const checkState = isDone ? "checked" : (isFailed ? "failed-check" : "");
-  const checkIcon  = isDone ? '<i data-lucide="check" style="width:14px;height:14px"></i>' : (isFailed ? '<i data-lucide="x" style="width:14px;height:14px"></i>' : "");
+  const checkState = isDone ? "checked" : (isFailed || isCarried ? "failed-check" : "");
+  const checkIcon  = isDone
+    ? '<i data-lucide="check" style="width:14px;height:14px"></i>'
+    : (isFailed
+        ? '<i data-lucide="x" style="width:14px;height:14px"></i>'
+        : (isCarried ? '<i data-lucide="calendar-clock" style="width:14px;height:14px"></i>' : ""));
 
   const xpChip = task.xp_awarded != null
     ? `<span class="xp-chip ${task.xp_awarded >= 0 ? 'positive' : 'negative'}">${fmtXP(task.xp_awarded)} XP</span>`
@@ -158,11 +178,12 @@ function renderTaskItem(task) {
   const canComplete = task.type === "unplanned" || (task.type === "planned" && isLocked);
 
   const actions = isPending ? `
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
       ${canComplete ? `<button class="btn btn-success-custom" style="padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:4px" onclick="completeTask('${task.task_id}')"><i data-lucide="check" style="width:14px;height:14px"></i> Done</button>` : `<span style="font-size:.75rem;color:var(--text-muted);display:flex;align-items:center;gap:4px"><i data-lucide="lock" style="width:13px;height:13px"></i> Lock plan to complete</span>`}
       ${task.type === "planned" && isLocked ? `<button class="btn btn-danger-custom" style="padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:4px" onclick="failTask('${task.task_id}')"><i data-lucide="x" style="width:14px;height:14px"></i> Fail</button>` : ""}
+      ${task.type === "planned" && isLocked ? `<button class="btn btn-ghost" style="padding:5px 12px;font-size:.8rem;display:flex;align-items:center;gap:4px;color:var(--warning);border-color:var(--warning)" onclick="carryOverTask('${task.task_id}')"><i data-lucide="calendar-clock" style="width:14px;height:14px"></i> Carry (−2 XP)</button>` : ""}
     </div>
-  ` : "";
+  ` : (isCarried ? `<span style="font-size:.75rem;color:var(--warning);display:flex;align-items:center;gap:4px"><i data-lucide="calendar-clock" style="width:13px;height:13px"></i> Moved to tomorrow</span>` : "");
 
   return `
     <div class="task-item ${task.status} ${task.type}" id="task-${task.task_id}">
@@ -244,5 +265,40 @@ async function lockPlan() {
   } catch (err) {
     showToast(err.message, "error");
     setButtonLoading(btn, false);
+  }
+}
+
+async function scheduleTomorrow(title) {
+  try {
+    const result = await apiFetch("/api/tasks/schedule-tomorrow", "POST", { title });
+    const msg = document.getElementById("tomorrow-count-msg");
+    if (msg) msg.textContent = `✓ "${result.title}" scheduled for ${result.scheduled_for}`;
+    showToast(`Task scheduled for tomorrow!`, "success");
+  } catch (err) {
+    showToast(err.message, "error");
+  }
+}
+
+async function carryOverTask(taskId) {
+  const confirmed = confirm("Carry this task to tomorrow? This costs −2 XP.");
+  if (!confirmed) return;
+  try {
+    const result = await apiFetch(`/api/tasks/${taskId}/carry-over`, "POST");
+    // Update local state
+    const idx = _tasks.findIndex(t => t.task_id === taskId);
+    if (idx !== -1) {
+      _tasks[idx].status = "carried_over";
+      _tasks[idx].xp_awarded = result.xp_delta;
+    }
+    // Update stored user XP
+    const user = getUser();
+    if (user) {
+      user.total_xp = result.new_total_xp;
+      setUser(user);
+    }
+    renderAll();
+    showToast(`Task moved to ${result.scheduled_for} (${result.xp_delta} XP)`, "error");
+  } catch (err) {
+    showToast(err.message, "error");
   }
 }

@@ -356,6 +356,12 @@ a:hover { color: var(--accent); }
 }
 .task-item.failed .task-title { text-decoration: line-through; color: var(--text-muted); }
 
+.task-item.carried_over {
+  border-color: rgba(243,156,18,0.35);
+  background: rgba(243,156,18,0.05);
+}
+.task-item.carried_over .task-title { color: var(--text-muted); font-style: italic; }
+
 .task-item.unplanned { border-style: dashed; }
 
 .task-checkbox {
