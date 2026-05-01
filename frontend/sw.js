@@ -6,9 +6,45 @@
  *  - GET /api/*: Network-first, fall back to cache
  *  - POST/PATCH /api/*: Network-first, queue to IndexedDB on failure
  *  - Background Sync: Replay queued mutations when back online
+ *  - Push: Firebase Cloud Messaging (FCM) via importScripts
  */
 
-const CACHE_NAME = "xpforge-v7";
+// ── Firebase Messaging in SW ─────────────────────────────────────────────────
+// Import Firebase compat scripts required for SW messaging
+importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js");
+importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
+
+// Firebase config is injected at SW install time via the FIREBASE_SW_CONFIG
+// message, or read from the cache. We initialise lazily on first push.
+let _firebaseInitialised = false;
+let _messaging = null;
+
+function initFirebaseIfNeeded(config) {
+  if (_firebaseInitialised) return;
+  try {
+    firebase.initializeApp(config);
+    _messaging = firebase.messaging();
+
+    // Handle background FCM messages
+    _messaging.onBackgroundMessage((payload) => {
+      const { title, body, icon, url } = payload.data || payload.notification || {};
+      self.registration.showNotification(title || "XPForge", {
+        body: body || "New notification",
+        icon: icon || "https://api.iconify.design/lucide/zap.svg?color=%236c63ff&width=192&height=192",
+        data: { url: url || "/notifications.html" },
+        vibrate: [100, 50, 100],
+      });
+    });
+
+    _firebaseInitialised = true;
+    console.log("[SW] Firebase Messaging initialised.");
+  } catch (e) {
+    console.error("[SW] Firebase init error:", e);
+  }
+}
+
+// ── Cache config ─────────────────────────────────────────────────────────────
+const CACHE_NAME = "xpforge-v8";
 const OFFLINE_CACHE = "xpforge-offline-pages";
 
 const STATIC_ASSETS = [
@@ -50,6 +86,16 @@ self.addEventListener("activate", (event) => {
       )
     ).then(() => self.clients.claim())
   );
+});
+
+// ─── MESSAGE (from page: pass Firebase config) ────────────────────────────────
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "FIREBASE_CONFIG") {
+    initFirebaseIfNeeded(event.data.config);
+  }
+  if (event.data && event.data.type === "SYNC_COMPLETE") {
+    // relay to all clients
+  }
 });
 
 // ─── FETCH ──────────────────────────────────────────────
@@ -206,7 +252,13 @@ async function flushQueueSW() {
 }
 
 // ─── PUSH NOTIFICATIONS ─────────────────────────────────
+// Handled by Firebase Messaging SDK (onBackgroundMessage above).
+// This fallback handles any raw push events not caught by Firebase.
 self.addEventListener("push", (event) => {
+  // Firebase Messaging intercepts most push events.
+  // This is a safety net for non-FCM pushes or if Firebase is not yet initialised.
+  if (_firebaseInitialised) return;
+
   let data = {};
   if (event.data) {
     try {
@@ -232,7 +284,9 @@ self.addEventListener("push", (event) => {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   
-  const targetUrl = event.notification.data.url;
+  const targetUrl = (event.notification.data && event.notification.data.url)
+    ? event.notification.data.url
+    : "/notifications.html";
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {

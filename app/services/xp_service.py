@@ -70,14 +70,16 @@ def award_provisional_xp(user_id: str, task_id: str, task_type: str) -> dict:
     # Append log
     _append_xp_log(db, user_id, task_id, xp_delta, reason, is_provisional=True)
 
-    # Update user total_xp
+    # Update user total_xp (floored at 0 � XP can never go negative)
     user_ref = db.collection("users").document(user_id)
     user_data = user_ref.get().to_dict()
-    new_total = user_data.get("total_xp", 0) + xp_delta
+    current_xp = user_data.get("total_xp", 0)
+    new_total = max(0, current_xp + xp_delta)
+    effective_delta = new_total - current_xp
     user_ref.update({"total_xp": new_total})
 
     # Update leaderboards provisionally
-    update_all_leaderboards(user_id, xp_delta, user_data.get("username", ""), user_data.get("avatar_color", "#6C63FF"))
+    update_all_leaderboards(user_id, effective_delta, user_data.get("username", ""), user_data.get("avatar_color", "#6C63FF"))
 
     # ── Rank-change notifications ─────────────────────────────────────────────
     try:
@@ -129,10 +131,13 @@ def deduct_provisional_xp(user_id: str, task_id: str) -> dict:
 
     user_ref = db.collection("users").document(user_id)
     user_data = user_ref.get().to_dict()
-    new_total = user_data.get("total_xp", 0) + xp_delta
+    current_xp = user_data.get("total_xp", 0)
+    new_total = max(0, current_xp + xp_delta)
+    # Effective delta after clamping (used for leaderboard adjustment)
+    effective_delta = new_total - current_xp
     user_ref.update({"total_xp": new_total})
 
-    update_all_leaderboards(user_id, xp_delta, user_data.get("username", ""), user_data.get("avatar_color", "#6C63FF"))
+    update_all_leaderboards(user_id, effective_delta, user_data.get("username", ""), user_data.get("avatar_color", "#6C63FF"))
 
     return {"xp_delta": xp_delta, "new_total": new_total}
 
@@ -152,10 +157,12 @@ def finalize_xp_for_task(user_id: str, task_id: str, xp_delta: int, reason: str)
 
     user_ref = db.collection("users").document(user_id)
     user_data = user_ref.get().to_dict()
-    new_total = user_data.get("total_xp", 0) + xp_delta
+    current_xp = user_data.get("total_xp", 0)
+    new_total = max(0, current_xp + xp_delta)
+    effective_delta = new_total - current_xp
     user_ref.update({"total_xp": new_total})
 
-    update_all_leaderboards(user_id, xp_delta, user_data.get("username", ""), user_data.get("avatar_color", "#6C63FF"))
+    update_all_leaderboards(user_id, effective_delta, user_data.get("username", ""), user_data.get("avatar_color", "#6C63FF"))
 
 
 def get_user_xp_logs(user_id: str, limit: int = 50) -> list:

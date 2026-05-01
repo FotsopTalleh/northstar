@@ -17,7 +17,17 @@ class Config:
     # Google OAuth — for Sign in with Google
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
 
-    # Web Push (VAPID)
+    # Web Push (VAPID) — legacy, kept for backward compat
     VAPID_PUBLIC_KEY  = os.environ.get("VAPID_PUBLIC_KEY", "")
     VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
     VAPID_EMAIL       = os.environ.get("VAPID_EMAIL", "")
+
+    # Firebase Web App config (safe to expose publicly to the frontend)
+    FIREBASE_API_KEY             = os.environ.get("FIREBASE_API_KEY", "")
+    FIREBASE_AUTH_DOMAIN         = os.environ.get("FIREBASE_AUTH_DOMAIN", "")
+    FIREBASE_PROJECT_ID          = os.environ.get("FIREBASE_PROJECT_ID", "xpforge-1ccd8")
+    FIREBASE_STORAGE_BUCKET      = os.environ.get("FIREBASE_STORAGE_BUCKET", "")
+    FIREBASE_MESSAGING_SENDER_ID = os.environ.get("FIREBASE_MESSAGING_SENDER_ID", "")
+    FIREBASE_APP_ID              = os.environ.get("FIREBASE_APP_ID", "")
+    # VAPID key used by Firebase Messaging (from Firebase Console → Cloud Messaging → Web Push certificates)
+    FIREBASE_VAPID_KEY           = os.environ.get("FIREBASE_VAPID_KEY", "")

@@ -57,11 +57,11 @@ def update_me():
 @user_bp.route("/me/push-subscription", methods=["POST"])
 @require_auth
 def save_push_subscription():
+    """Legacy Web Push subscription storage — kept for backward compat."""
     data = request.get_json()
     if not data or "endpoint" not in data or "keys" not in data:
         return jsonify({"error": "Invalid subscription data"}), 400
 
-    # Only keep fields that pywebpush expects — strip expirationTime etc.
     clean_sub = {
         "endpoint": data["endpoint"],
         "keys": data["keys"],
@@ -73,7 +73,6 @@ def save_push_subscription():
     user_doc = user_ref.get()
     if user_doc.exists:
         subs = user_doc.to_dict().get("push_subscriptions", [])
-        # Replace if endpoint exists (keeps keys fresh), otherwise append
         endpoint = clean_sub["endpoint"]
         existing_idx = next((i for i, s in enumerate(subs) if s.get("endpoint") == endpoint), None)
         if existing_idx is not None:
@@ -84,10 +83,46 @@ def save_push_subscription():
 
     return jsonify({"message": "Subscription saved"}), 200
 
+
 @user_bp.route("/vapid-key", methods=["GET"])
 def get_vapid_key():
     from app.config import Config
     return jsonify({"vapid_public_key": Config.VAPID_PUBLIC_KEY}), 200
+
+
+@user_bp.route("/firebase-config", methods=["GET"])
+def get_firebase_config():
+    """Return the Firebase web app config (safe to expose publicly)."""
+    from app.config import Config
+    return jsonify({
+        "apiKey":            Config.FIREBASE_API_KEY,
+        "authDomain":        Config.FIREBASE_AUTH_DOMAIN,
+        "projectId":         Config.FIREBASE_PROJECT_ID,
+        "storageBucket":     Config.FIREBASE_STORAGE_BUCKET,
+        "messagingSenderId": Config.FIREBASE_MESSAGING_SENDER_ID,
+        "appId":             Config.FIREBASE_APP_ID,
+        "vapidKey":          Config.FIREBASE_VAPID_KEY,
+    }), 200
+
+
+@user_bp.route("/me/fcm-token", methods=["POST"])
+@require_auth
+def save_fcm_token():
+    """Store an FCM registration token for this user (Firebase Cloud Messaging)."""
+    data = request.get_json(silent=True) or {}
+    token = data.get("token", "").strip()
+    if not token:
+        return jsonify({"error": "token is required"}), 400
+
+    db = get_db()
+    user_ref = db.collection("users").document(g.user_id)
+    user_doc = user_ref.get()
+    if user_doc.exists:
+        tokens = user_doc.to_dict().get("fcm_tokens", [])
+        if token not in tokens:
+            tokens.append(token)
+            user_ref.update({"fcm_tokens": tokens})
+    return jsonify({"message": "FCM token saved"}), 200
 
 
 @user_bp.route("/<user_id>", methods=["GET"])

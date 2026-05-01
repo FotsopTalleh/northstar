@@ -41,9 +41,8 @@ if ("serviceWorker" in navigator) {
           }
         });
 
-        // Auto-renew push subscription on every page load if the user
+        // Auto-renew FCM subscription on every page load if the user
         // is logged in and has already granted browser permission.
-        // This keeps the subscription fresh after VAPID key rotations.
         if (getToken() && Notification.permission === "granted") {
           subscribeToPush().catch(() => {});
         }
@@ -195,12 +194,95 @@ function setButtonLoading(btn, isLoading, originalHtml = "") {
 }
 
 
-// ── Push Subscription (shared across all pages) ──────────────────────────────
+// ── Firebase FCM Push Subscription ──────────────────────────────────────────
 
 /**
- * Convert a URL-safe Base64 VAPID public key to a Uint8Array
- * required by PushManager.subscribe().
+ * Initialise Firebase app + messaging and get an FCM registration token.
+ * Stores the token on the server via /api/users/me/fcm-token.
+ * Returns true on success, false on failure/denial/unsupported.
  */
+async function subscribeToPush() {
+  if (!("serviceWorker" in navigator)) {
+    console.warn("[FCM] Service workers not supported.");
+    return false;
+  }
+  if (!getToken()) return false; // Must be logged in
+
+  try {
+    // 1. Request notification permission
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      console.warn("[FCM] Permission not granted:", permission);
+      return false;
+    }
+
+    // 2. Fetch Firebase web config from backend
+    const config = await apiFetch("/api/users/firebase-config");
+    if (!config || !config.apiKey || !config.messagingSenderId) {
+      console.error("[FCM] Firebase config not available. Set FIREBASE_* env vars on the server.");
+      return false;
+    }
+
+    // 3. Lazy-load Firebase JS SDK (compat)
+    if (typeof firebase === "undefined") {
+      await _loadScript("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js");
+      await _loadScript("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
+    }
+
+    // 4. Initialise Firebase app (idempotent)
+    let app;
+    try {
+      app = firebase.app();
+    } catch (_) {
+      app = firebase.initializeApp(config);
+    }
+    const messaging = firebase.messaging(app);
+
+    // 5. Tell the service worker about the Firebase config so it can
+    //    initialise Firebase Messaging for background messages
+    const reg = await navigator.serviceWorker.ready;
+    if (navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: "FIREBASE_CONFIG",
+        config,
+      });
+    }
+
+    // 6. Get FCM registration token
+    const fcmToken = await messaging.getToken({
+      vapidKey: config.vapidKey,
+      serviceWorkerRegistration: reg,
+    });
+
+    if (!fcmToken) {
+      console.warn("[FCM] No registration token returned.");
+      return false;
+    }
+
+    // 7. Save token on server
+    await apiFetch("/api/users/me/fcm-token", "POST", { token: fcmToken });
+    console.log("[FCM] Subscription active.");
+    return true;
+
+  } catch (err) {
+    console.error("[FCM] Failed to subscribe:", err);
+    return false;
+  }
+}
+
+/** Dynamically load an external script (returns a Promise). */
+function _loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement("script");
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+/** Legacy helper — kept in case any code references it. */
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -208,61 +290,4 @@ function urlBase64ToUint8Array(base64String) {
   const output = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i);
   return output;
-}
-
-/**
- * Subscribe (or re-subscribe) the current user to Web Push.
- * Returns true on success, false if permission denied or unsupported.
- * Safe to call multiple times — detects VAPID key mismatches and re-subscribes.
- */
-async function subscribeToPush() {
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-    console.warn("[Push] Not supported on this browser.");
-    return false;
-  }
-  if (!getToken()) return false; // Must be logged in
-
-  try {
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      console.warn("[Push] Permission not granted:", permission);
-      return false;
-    }
-
-    const registration = await navigator.serviceWorker.ready;
-    let subscription = await registration.pushManager.getSubscription();
-
-    // Fetch current VAPID public key from server
-    const res = await apiFetch("/api/users/vapid-key");
-    if (!res || !res.vapid_public_key) throw new Error("Could not retrieve VAPID key.");
-    const applicationServerKey = urlBase64ToUint8Array(res.vapid_public_key);
-
-    if (subscription) {
-      // Detect VAPID key mismatch — unsubscribe and re-subscribe with new key
-      const existingKey = subscription.options?.applicationServerKey
-        ? btoa(String.fromCharCode(...new Uint8Array(subscription.options.applicationServerKey)))
-        : null;
-      const newKeyBase64 = res.vapid_public_key.replace(/-/g, "+").replace(/_/g, "/");
-      if (existingKey && existingKey !== newKeyBase64) {
-        console.info("[Push] VAPID key mismatch — re-subscribing.");
-        await subscription.unsubscribe();
-        subscription = null;
-      }
-    }
-
-    if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey,
-      });
-    }
-
-    // toJSON() gives { endpoint, keys } — safe to send
-    await apiFetch("/api/users/me/push-subscription", "POST", subscription.toJSON());
-    console.log("[Push] Subscription active.");
-    return true;
-  } catch (err) {
-    console.error("[Push] Failed to subscribe:", err);
-    return false;
-  }
 }
